@@ -1,3 +1,26 @@
+```
+src/
+├── components/
+│   ├── common/
+│   │   ├── LoadingSpinner.jsx
+│   │   ├── ErrorMessage.jsx
+│   │   └── SuccessMessage.jsx
+│   ├── sheets/
+│   │   ├── SheetsViewer.jsx          # 메인 컨테이너 컴포넌트
+│   │   ├── SheetsTable.jsx           # 테이블 컴포넌트
+│   │   └── SheetsHeader.jsx          # 헤더 정보 컴포넌트
+│   └── layout/
+│       └── Header.jsx                # 페이지 헤더
+├── services/
+│   ├── GoogleSheetsData.js         # Google Sheets API 클래스
+│   └── sheetsConfig.js               # 설정 파일 (스프레드시트 ID 등)
+├── hooks/
+│   └── useGoogleSheets.js            # 커스텀 훅
+├── utils/
+│   └── constants.js                  # 상수 정의
+└── App.jsx                           # 메인 앱 컴포넌트
+```
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

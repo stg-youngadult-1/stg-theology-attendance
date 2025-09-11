@@ -1,6 +1,45 @@
-// components/sheets/SheetsTable.jsx
-
 import React, { useState, useMemo } from 'react';
+
+/**
+ * 날짜를 "9/10" 형식으로 포맷팅
+ * @param {Date} date - Date 객체
+ * @returns {string} 포맷된 날짜 문자열
+ */
+const formatDate = (date) => {
+    if (!date || !(date instanceof Date)) return '';
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+};
+
+/**
+ * 출석 상태에 따른 스타일 반환
+ * @param {string} status - 출석 상태 ('O', 'X', 'None', 'Etc')
+ * @returns {Object} 스타일 객체
+ */
+const getAttendanceStyle = (status) => {
+    switch (status) {
+        case 'O':
+            return {
+                className: 'text-green-600 font-semibold',
+                content: 'O'
+            };
+        case 'X':
+            return {
+                className: 'text-red-600 font-semibold',
+                content: 'X'
+            };
+        case 'Etc':
+            return {
+                className: 'text-green-600 font-medium',
+                content: null // desc 내용을 표시
+            };
+        case 'None':
+        default:
+            return {
+                className: 'text-gray-400',
+                content: '-'
+            };
+    }
+};
 
 /**
  * 스프레드시트 테이블 컴포넌트
@@ -19,52 +58,50 @@ const SheetsTable = ({ data, loading, className = '' }) => {
 
         let filtered = data.dataRows;
 
-        // 검색 필터링
+        // 검색 필터링 - 사용자 이름과 반 정보로 검색
         if (searchTerm) {
-            filtered = filtered.filter(row =>
-                row.some(cell =>
-                    String(cell || '').toLowerCase().includes(searchTerm.toLowerCase())
-                )
-            );
+            filtered = filtered.filter(row => {
+                const name = row.user?.name || '';
+                const className = row.user?.class || '';
+                const searchLower = searchTerm.toLowerCase();
+
+                return name.toLowerCase().includes(searchLower) ||
+                    className.toLowerCase().includes(searchLower);
+            });
         }
 
-        // 정렬
-        if (sortConfig.key !== null) {
+        // 정렬 - 이름 기준으로만 정렬
+        if (sortConfig.key === 'name') {
             filtered = [...filtered].sort((a, b) => {
-                const aVal = String(a[sortConfig.key] || '');
-                const bVal = String(b[sortConfig.key] || '');
+                const aName = a.user?.name || '';
+                const bName = b.user?.name || '';
 
-                // 숫자 비교 시도
-                const aNum = parseFloat(aVal);
-                const bNum = parseFloat(bVal);
-
-                if (!isNaN(aNum) && !isNaN(bNum)) {
-                    return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
-                }
-
-                // 문자열 비교
                 return sortConfig.direction === 'asc'
-                    ? aVal.localeCompare(bVal, 'ko-KR')
-                    : bVal.localeCompare(aVal, 'ko-KR');
+                    ? aName.localeCompare(bName, 'ko-KR')
+                    : bName.localeCompare(aName, 'ko-KR');
             });
         }
 
         return filtered;
     }, [data?.dataRows, searchTerm, sortConfig]);
 
-    // 정렬 핸들러
-    const handleSort = (columnIndex) => {
+    // 정렬 핸들러 - 이름 열만 정렬 가능
+    const handleSort = (key) => {
+        if (key !== 'name') return;
+
         setSortConfig(prevConfig => ({
-            key: columnIndex,
-            direction: prevConfig.key === columnIndex && prevConfig.direction === 'asc'
+            key: key,
+            direction: prevConfig.key === key && prevConfig.direction === 'asc'
                 ? 'desc'
                 : 'asc'
         }));
     };
 
     // 정렬 아이콘 렌더링
-    const getSortIcon = (columnIndex) => {
-        if (sortConfig.key !== columnIndex) {
+    const getSortIcon = (key) => {
+        if (key !== 'name') return null;
+
+        if (sortConfig.key !== key) {
             return <span className="text-gray-400">⇅</span>;
         }
         return sortConfig.direction === 'asc'
@@ -115,7 +152,7 @@ const SheetsTable = ({ data, loading, className = '' }) => {
             <div className="px-6 py-4 border-b bg-gray-50">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        📋 {data.sheetName || '데이터 테이블'}
+                        📋 {data.sheetName || '출석 관리'}
                     </h3>
 
                     {/* 검색 입력 */}
@@ -123,14 +160,14 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                         <div className="relative">
                             <input
                                 type="text"
-                                placeholder="데이터 검색..."
+                                placeholder="이름 또는 반 검색..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="
-                  pl-8 pr-4 py-2 border border-gray-300 rounded-lg
-                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                  text-sm w-64
-                "
+                                    pl-8 pr-4 py-2 border border-gray-300 rounded-lg
+                                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                    text-sm w-64
+                                "
                             />
                             <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
                         </div>
@@ -139,7 +176,7 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                         <div className="text-sm text-gray-600">
                             {searchTerm
                                 ? `${processedData.length}개 검색 결과`
-                                : `총 ${data.dataRowCount}행`
+                                : `총 ${data.dataRowCount}명`
                             }
                         </div>
                     </div>
@@ -152,21 +189,43 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                     {/* 테이블 헤더 */}
                     <thead className="bg-gray-100 sticky top-0">
                     <tr>
+                        {/* 이름 열 */}
+                        <th
+                            onClick={() => handleSort('name')}
+                            className="
+                                    px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
+                                    cursor-pointer hover:bg-gray-200 transition-colors select-none
+                                    border-r border-gray-200
+                                "
+                        >
+                            <div className="flex items-center gap-2">
+                                <span>이름</span>
+                                {getSortIcon('name')}
+                            </div>
+                        </th>
+
+                        {/* 반 열 */}
+                        <th className="
+                                px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
+                                border-r border-gray-200
+                            ">
+                            반
+                        </th>
+
+                        {/* 출석 열들 */}
                         {data.headers.map((header, index) => (
                             <th
                                 key={index}
-                                onClick={() => handleSort(index)}
                                 className="
-                    px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
-                    cursor-pointer hover:bg-gray-200 transition-colors select-none
-                    border-r border-gray-200 last:border-r-0
-                  "
+                                        px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider
+                                        border-r border-gray-200 last:border-r-0 min-w-[80px]
+                                    "
                             >
-                                <div className="flex items-center gap-2">
-                    <span className="truncate" title={header}>
-                      {header || `컬럼 ${index + 1}`}
-                    </span>
-                                    {getSortIcon(index)}
+                                <div className="flex flex-col items-center gap-1">
+                                    <span>{header.lecture}</span>
+                                    <span className="text-xs text-gray-400 font-normal">
+                                            {formatDate(header.date)}
+                                        </span>
                                 </div>
                             </th>
                         ))}
@@ -178,7 +237,7 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                     {processedData.length === 0 ? (
                         <tr>
                             <td
-                                colSpan={data.headers.length}
+                                colSpan={data.headers.length + 2}
                                 className="px-6 py-8 text-center text-gray-500"
                             >
                                 {searchTerm ? (
@@ -201,19 +260,59 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                                 key={rowIndex}
                                 className="hover:bg-blue-50 transition-colors"
                             >
-                                {data.headers.map((_, colIndex) => (
-                                    <td
-                                        key={colIndex}
-                                        className="
-                        px-6 py-4 whitespace-nowrap text-sm text-gray-900
-                        border-r border-gray-100 last:border-r-0
-                      "
-                                    >
-                                        <div className="max-w-xs truncate" title={row[colIndex] || ''}>
-                                            {row[colIndex] || '-'}
-                                        </div>
-                                    </td>
-                                ))}
+                                {/* 이름 셀 */}
+                                <td className="
+                                        px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900
+                                        border-r border-gray-100
+                                    ">
+                                    {row.user?.name || '-'}
+                                </td>
+
+                                {/* 반 셀 */}
+                                <td className="
+                                        px-6 py-4 whitespace-nowrap text-sm text-gray-600
+                                        border-r border-gray-100
+                                    ">
+                                    {row.user?.class || '-'}
+                                </td>
+
+                                {/* 출석 정보 셀들 */}
+                                {row.attendance?.map((attendance, colIndex) => {
+                                        const style = getAttendanceStyle(attendance.status);
+                                        const displayContent = style.content !== null
+                                            ? style.content
+                                            : attendance.desc;
+
+                                        return (
+                                            <td
+                                                key={colIndex}
+                                                className="
+                                                    px-4 py-4 whitespace-nowrap text-sm text-center
+                                                    border-r border-gray-100 last:border-r-0
+                                                "
+                                            >
+                                                <div
+                                                    className={`${style.className} max-w-[60px] truncate mx-auto`}
+                                                    title={attendance.status === 'Etc' ? attendance.desc : attendance.status}
+                                                >
+                                                    {displayContent || '-'}
+                                                </div>
+                                            </td>
+                                        );
+                                    }) ||
+                                    // attendance 배열이 없는 경우 빈 셀들로 채우기
+                                    data.headers.map((_, colIndex) => (
+                                        <td
+                                            key={colIndex}
+                                            className="
+                                                px-4 py-4 whitespace-nowrap text-sm text-center text-gray-400
+                                                border-r border-gray-100 last:border-r-0
+                                            "
+                                        >
+                                            -
+                                        </td>
+                                    ))
+                                }
                             </tr>
                         ))
                     )}
@@ -246,7 +345,7 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                         )}
 
                         <div>
-                            표시 중: <span className="font-medium">{processedData.length}</span>행
+                            표시 중: <span className="font-medium">{processedData.length}</span>명
                         </div>
                     </div>
                 </div>
