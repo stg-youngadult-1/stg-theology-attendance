@@ -218,6 +218,202 @@ class GoogleSheetsData {
         }
     }
 
+    // /**
+    //  * 스프레드시트 데이터 목업 함수 (개발/테스트용)
+    //  * @param {string} spreadsheetId - 스프레드시트 ID
+    //  * @param {string} sheetName - 시트명
+    //  * @param {string} range - 데이터 범위
+    //  * @returns {Promise<Object>} 구조화된 목업 데이터 객체
+    //  */
+    // async fetchSheetData(
+    //     spreadsheetId = 'mock-spreadsheet-id',
+    //     sheetName = 'Mock Sheet',
+    //     range = 'A1:P50'
+    // ) {
+    //     // 실제 API 호출 시뮬레이션을 위한 지연
+    //     await new Promise(resolve => setTimeout(resolve, 800));
+    //
+    //     try {
+    //         // 목업 헤더 데이터 생성
+    //         const headers = [
+    //             { lecture: '1강', date: new Date(2025, 8, 10) },   // 2025년 9월 10일
+    //             { lecture: '2강', date: new Date(2025, 8, 17) },   // 2025년 9월 17일
+    //             { lecture: '3강', date: new Date(2025, 8, 24) },   // 2025년 9월 24일
+    //             { lecture: '4강', date: new Date(2025, 9, 1) },    // 2025년 10월 1일
+    //             { lecture: '5강', date: new Date(2025, 9, 8) },    // 2025년 10월 8일
+    //             { lecture: '6강', date: new Date(2025, 9, 15) },   // 2025년 10월 15일
+    //             { lecture: '7강', date: new Date(2025, 9, 22) },   // 2025년 10월 22일
+    //             { lecture: '8강', date: new Date(2025, 9, 29) },   // 2025년 10월 29일
+    //             { lecture: '9강', date: new Date(2025, 10, 5) },   // 2025년 11월 5일
+    //             { lecture: '10강', date: new Date(2025, 10, 12) }, // 2025년 11월 12일
+    //             { lecture: '11강', date: new Date(2025, 10, 19) }, // 2025년 11월 19일
+    //             { lecture: '12강', date: new Date(2025, 10, 26) }, // 2025년 11월 26일
+    //             { lecture: '13강', date: new Date(2025, 11, 3) },  // 2025년 12월 3일
+    //             { lecture: '14강', date: new Date(2025, 11, 10) }  // 2025년 12월 10일
+    //         ];
+    //
+    //         // 목업 출석 데이터 생성 도우미 함수
+    //         const generateAttendance = (pattern) => {
+    //             const attendance = [];
+    //             for (let i = 0; i < headers.length; i++) {
+    //                 switch (pattern[i % pattern.length]) {
+    //                     case 'O':
+    //                         attendance.push({ status: 'O', desc: '' });
+    //                         break;
+    //                     case 'X':
+    //                         attendance.push({ status: 'X', desc: '' });
+    //                         break;
+    //                     case 'L':
+    //                         attendance.push({ status: 'Etc', desc: '지각' });
+    //                         break;
+    //                     case 'E':
+    //                         attendance.push({ status: 'Etc', desc: '조퇴' });
+    //                         break;
+    //                     case 'S':
+    //                         attendance.push({ status: 'Etc', desc: '병가' });
+    //                         break;
+    //                     case 'P':
+    //                         attendance.push({ status: 'Etc', desc: '공가' });
+    //                         break;
+    //                     default:
+    //                         attendance.push({ status: 'None', desc: '' });
+    //                 }
+    //             }
+    //             return attendance;
+    //         };
+    //
+    //         // 목업 데이터 행 생성
+    //         const dataRows = [
+    //             {
+    //                 user: { name: '강민영', class: '저녁반' },
+    //                 attendance: generateAttendance(['X', 'O', 'O', 'L', 'O', 'X', 'O', 'O', 'E', 'O', 'O', 'S', 'O', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '강신희', class: '저녁반' },
+    //                 attendance: generateAttendance(['O', 'X', 'X', 'O', 'O', 'O', 'L', 'O', 'O', 'X', 'O', 'O', 'P', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '강은진', class: '저녁반' },
+    //                 attendance: generateAttendance(['O', 'O', 'O', 'O', 'X', 'O', 'O', 'L', 'O', 'O', 'O', 'O', 'O', 'E'])
+    //             },
+    //             {
+    //                 user: { name: '고태린', class: '저녁반' },
+    //                 attendance: generateAttendance(['-', 'P', 'O', 'O', 'O', 'X', 'O', 'O', 'O', 'L', 'O', 'X', 'O', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '김도현', class: '오전반' },
+    //                 attendance: generateAttendance(['O', 'O', 'L', 'O', 'O', 'O', 'X', 'O', 'O', 'O', 'S', 'O', 'O', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '김민수', class: '오전반' },
+    //                 attendance: generateAttendance(['O', 'X', 'O', 'E', 'O', 'O', 'O', 'L', 'O', 'O', 'O', 'X', 'O', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '김지연', class: '오후반' },
+    //                 attendance: generateAttendance(['L', 'O', 'O', 'O', 'O', 'X', 'O', 'O', 'P', 'O', 'O', 'O', 'E', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '박서준', class: '오후반' },
+    //                 attendance: generateAttendance(['O', 'O', 'X', 'O', 'L', 'O', 'O', 'O', 'O', 'X', 'O', 'O', 'O', 'S'])
+    //             },
+    //             {
+    //                 user: { name: '박지민', class: '저녁반' },
+    //                 attendance: generateAttendance(['O', 'L', 'O', 'O', 'O', 'O', 'E', 'O', 'X', 'O', 'O', 'O', 'O', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '백승우', class: '오전반' },
+    //                 attendance: generateAttendance(['X', 'O', 'O', 'O', 'O', 'L', 'O', 'X', 'O', 'O', 'P', 'O', 'O', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '송하은', class: '오후반' },
+    //                 attendance: generateAttendance(['O', 'O', 'P', 'O', 'X', 'O', 'O', 'O', 'O', 'L', 'O', 'E', 'O', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '신예원', class: '저녁반' },
+    //                 attendance: generateAttendance(['O', 'X', 'O', 'L', 'O', 'O', 'O', 'S', 'O', 'O', 'X', 'O', 'O', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '안재현', class: '오전반' },
+    //                 attendance: generateAttendance(['L', 'O', 'O', 'O', 'E', 'O', 'X', 'O', 'O', 'O', 'O', 'L', 'O', 'X'])
+    //             },
+    //             {
+    //                 user: { name: '윤서아', class: '오후반' },
+    //                 attendance: generateAttendance(['O', 'O', 'X', 'O', 'O', 'P', 'O', 'O', 'L', 'O', 'O', 'O', 'S', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '이준혁', class: '저녁반' },
+    //                 attendance: generateAttendance(['O', 'P', 'O', 'O', 'O', 'O', 'L', 'O', 'O', 'E', 'O', 'X', 'O', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '임채원', class: '오전반' },
+    //                 attendance: generateAttendance(['E', 'O', 'L', 'O', 'O', 'X', 'O', 'O', 'O', 'O', 'S', 'O', 'O', 'P'])
+    //             },
+    //             {
+    //                 user: { name: '장민호', class: '오후반' },
+    //                 attendance: generateAttendance(['O', 'O', 'O', 'X', 'L', 'O', 'O', 'P', 'O', 'O', 'O', 'E', 'X', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '정수빈', class: '저녁반' },
+    //                 attendance: generateAttendance(['O', 'L', 'X', 'O', 'O', 'O', 'S', 'O', 'O', 'O', 'P', 'O', 'O', 'E'])
+    //             },
+    //             {
+    //                 user: { name: '조현우', class: '오전반' },
+    //                 attendance: generateAttendance(['S', 'O', 'O', 'E', 'O', 'L', 'O', 'O', 'X', 'O', 'O', 'O', 'L', 'O'])
+    //             },
+    //             {
+    //                 user: { name: '최예진', class: '오후반' },
+    //                 attendance: generateAttendance(['O', 'O', 'E', 'O', 'P', 'O', 'X', 'O', 'O', 'L', 'O', 'O', 'O', 'S'])
+    //             }
+    //         ];
+    //
+    //         // 목업 원본 rows 데이터 (Google Sheets 형태 시뮬레이션)
+    //         const rows = [
+    //             // 헤더 1행: 강의명
+    //             ['', '', '1강', '2강', '3강', '4강', '5강', '6강', '7강', '8강', '9강', '10강', '11강', '12강', '13강', '14강'],
+    //             // 헤더 2행: 날짜
+    //             ['', '', '9/10', '9/17', '9/24', '10/1', '10/8', '10/15', '10/22', '10/29', '11/5', '11/12', '11/19', '11/26', '12/3', '12/10'],
+    //             // 데이터 행들
+    //             ...dataRows.map(row => {
+    //                 const rowData = [row.user.name, row.user.class];
+    //                 row.attendance.forEach(att => {
+    //                     if (att.status === 'O') rowData.push('O');
+    //                     else if (att.status === 'X') rowData.push('X');
+    //                     else if (att.status === 'Etc') rowData.push(att.desc);
+    //                     else rowData.push('-');
+    //                 });
+    //                 return rowData;
+    //             })
+    //         ];
+    //
+    //         const result = {
+    //             rows,
+    //             headers,
+    //             dataRows,
+    //             totalRows: rows.length,
+    //             dataRowCount: dataRows.length,
+    //             hasData: true,
+    //             range,
+    //             sheetName,
+    //             spreadsheetId,
+    //             lastUpdated: new Date().toISOString()
+    //         };
+    //
+    //         console.log(`📋 목업 데이터 생성 완료:`, {
+    //             totalRows: result.totalRows,
+    //             dataRows: result.dataRowCount,
+    //             headers: result.headers.length,
+    //             sheetName: result.sheetName
+    //         });
+    //
+    //         return result;
+    //
+    //     } catch (error) {
+    //         console.error('❌ 목업 데이터 생성 실패:', error);
+    //         throw error;
+    //     }
+    // }
+
+
     /**
      * 특정 셀의 값 조회
      * @param {string} spreadsheetId - 스프레드시트 ID
