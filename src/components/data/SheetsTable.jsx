@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import SheetsTableSkeleton from "./SheetsTableSkeleton.jsx";
+import SheetsTableWithNoData from "./SheetsTableWithNoData.jsx";
 
 /**
  * 날짜를 "9/10" 형식으로 포맷팅
@@ -111,39 +113,12 @@ const SheetsTable = ({ data, loading, className = '' }) => {
 
     // 로딩 상태
     if (loading) {
-        return (
-            <div className={`bg-white rounded-lg shadow-sm border overflow-hidden ${className}`}>
-                <div className="px-6 py-4 border-b bg-gray-50">
-                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <span className="animate-spin">⏳</span>
-                        테이블 로딩 중...
-                    </h3>
-                </div>
-                <div className="p-8 text-center text-gray-500">
-                    <div className="animate-pulse">
-                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded"></div>
-                    </div>
-                </div>
-            </div>
-        );
+        return <SheetsTableSkeleton className/>;
     }
 
     // 데이터가 없는 경우
     if (!data || !data.hasData || !data.headers || data.headers.length === 0) {
-        return (
-            <div className={`bg-white rounded-lg shadow-sm border overflow-hidden ${className}`}>
-                <div className="px-6 py-4 border-b bg-gray-50">
-                    <h3 className="text-lg font-semibold text-gray-800">📋 데이터 테이블</h3>
-                </div>
-                <div className="p-8 text-center text-gray-500">
-                    <div className="text-4xl mb-4">📭</div>
-                    <h4 className="text-lg font-medium mb-2">데이터가 없습니다</h4>
-                    <p>스프레드시트에서 데이터를 불러올 수 없습니다.</p>
-                </div>
-            </div>
-        );
+        return <SheetsTableWithNoData className/>;
     }
 
     return (
@@ -152,7 +127,7 @@ const SheetsTable = ({ data, loading, className = '' }) => {
             <div className="px-6 py-4 border-b bg-gray-50">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        📋 {data.sheetName || '출석 관리'}
+                        📋 25 가을학기
                     </h3>
 
                     {/* 검색 입력 */}
