@@ -134,72 +134,72 @@ const SheetsHeader = ({data, onRefresh, loading, config}) => {
                     </div>
 
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-                            <div className="px-4 py-5 sm:p-6">
-                                <div className="flex items-center">
-                                    <div className="flex-shrink-0">
-                                        <div
-                                            className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                            <i className="fas fa-check text-green-600"></i>
-                                        </div>
-                                    </div>
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-500">출석</p>
-                                        <p className="text-lg font-semibold text-gray-900">28명</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-                            <div className="px-4 py-5 sm:p-6">
-                                <div className="flex items-center">
-                                    <div className="flex-shrink-0">
-                                        <div
-                                            className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                                            <i className="fas fa-clock text-yellow-600"></i>
-                                        </div>
-                                    </div>
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-500">지각</p>
-                                        <p className="text-lg font-semibold text-gray-900">2명</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-                            <div className="px-4 py-5 sm:p-6">
-                                <div className="flex items-center">
-                                    <div className="flex-shrink-0">
-                                        <div
-                                            className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                                            <i className="fas fa-times text-red-600"></i>
-                                        </div>
-                                    </div>
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-500">결석</p>
-                                        <p className="text-lg font-semibold text-gray-900">0명</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-                            <div className="px-4 py-5 sm:p-6">
-                                <div className="flex items-center">
-                                    <div className="flex-shrink-0">
-                                        <div
-                                            className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                            <i className="fas fa-users text-blue-600"></i>
-                                        </div>
-                                    </div>
-                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-500">총원</p>
-                                        <p className="text-lg font-semibold text-gray-900">30명</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {/*<div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">*/}
+                    {/*    <div className="bg-white overflow-hidden shadow-sm rounded-lg">*/}
+                    {/*        <div className="px-4 py-5 sm:p-6">*/}
+                    {/*            <div className="flex items-center">*/}
+                    {/*                <div className="flex-shrink-0">*/}
+                    {/*                    <div*/}
+                    {/*                        className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">*/}
+                    {/*                        <i className="fas fa-check text-green-600"></i>*/}
+                    {/*                    </div>*/}
+                    {/*                </div>*/}
+                    {/*                <div className="ml-4">*/}
+                    {/*                    <p className="text-sm font-medium text-gray-500">출석</p>*/}
+                    {/*                    <p className="text-lg font-semibold text-gray-900">28명</p>*/}
+                    {/*                </div>*/}
+                    {/*            </div>*/}
+                    {/*        </div>*/}
+                    {/*    </div>*/}
+                    {/*    <div className="bg-white overflow-hidden shadow-sm rounded-lg">*/}
+                    {/*        <div className="px-4 py-5 sm:p-6">*/}
+                    {/*            <div className="flex items-center">*/}
+                    {/*                <div className="flex-shrink-0">*/}
+                    {/*                    <div*/}
+                    {/*                        className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">*/}
+                    {/*                        <i className="fas fa-clock text-yellow-600"></i>*/}
+                    {/*                    </div>*/}
+                    {/*                </div>*/}
+                    {/*                <div className="ml-4">*/}
+                    {/*                    <p className="text-sm font-medium text-gray-500">지각</p>*/}
+                    {/*                    <p className="text-lg font-semibold text-gray-900">2명</p>*/}
+                    {/*                </div>*/}
+                    {/*            </div>*/}
+                    {/*        </div>*/}
+                    {/*    </div>*/}
+                    {/*    <div className="bg-white overflow-hidden shadow-sm rounded-lg">*/}
+                    {/*        <div className="px-4 py-5 sm:p-6">*/}
+                    {/*            <div className="flex items-center">*/}
+                    {/*                <div className="flex-shrink-0">*/}
+                    {/*                    <div*/}
+                    {/*                        className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">*/}
+                    {/*                        <i className="fas fa-times text-red-600"></i>*/}
+                    {/*                    </div>*/}
+                    {/*                </div>*/}
+                    {/*                <div className="ml-4">*/}
+                    {/*                    <p className="text-sm font-medium text-gray-500">결석</p>*/}
+                    {/*                    <p className="text-lg font-semibold text-gray-900">0명</p>*/}
+                    {/*                </div>*/}
+                    {/*            </div>*/}
+                    {/*        </div>*/}
+                    {/*    </div>*/}
+                    {/*    <div className="bg-white overflow-hidden shadow-sm rounded-lg">*/}
+                    {/*        <div className="px-4 py-5 sm:p-6">*/}
+                    {/*            <div className="flex items-center">*/}
+                    {/*                <div className="flex-shrink-0">*/}
+                    {/*                    <div*/}
+                    {/*                        className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">*/}
+                    {/*                        <i className="fas fa-users text-blue-600"></i>*/}
+                    {/*                    </div>*/}
+                    {/*                </div>*/}
+                    {/*                <div className="ml-4">*/}
+                    {/*                    <p className="text-sm font-medium text-gray-500">총원</p>*/}
+                    {/*                    <p className="text-lg font-semibold text-gray-900">30명</p>*/}
+                    {/*                </div>*/}
+                    {/*            </div>*/}
+                    {/*        </div>*/}
+                    {/*    </div>*/}
+                    {/*</div>*/}
                 </div>
 
             )}
