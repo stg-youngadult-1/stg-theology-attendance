@@ -29,7 +29,7 @@ const CellEditModal = ({
     const attendancePresets = [
         { value: 'O', label: '출석', color: 'text-green-600', bgColor: 'bg-green-50 hover:bg-green-100' },
         { value: 'X', label: '결석', color: 'text-red-600', bgColor: 'bg-red-50 hover:bg-red-100' },
-        { value: '', label: '미기록', color: 'text-gray-600', bgColor: 'bg-gray-50 hover:bg-gray-100' },
+        { value: '', label: '미기록', color: 'text-gray-500', bgColor: 'bg-gray-50 hover:bg-gray-100' },
     ];
 
     // 모달이 열릴 때 현재 값으로 초기화
@@ -114,20 +114,20 @@ const CellEditModal = ({
     return (
         <div
             ref={modalRef}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/50  flex items-center justify-center p-4 z-50"
             onClick={handleBackgroundClick}
         >
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-auto">
+            <div className="bg-white rounded-lg shadow-sm max-w-md w-full max-h-[90vh] overflow-auto">
                 {/* 모달 헤더 */}
                 <div className="px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-medium text-gray-900">
                             출석 정보 수정
                         </h3>
                         <button
                             onClick={onClose}
                             disabled={loading}
-                            className="text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -139,7 +139,7 @@ const CellEditModal = ({
                 {/* 모달 바디 */}
                 <div className="px-6 py-4">
                     {/* 셀 정보 */}
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="mb-4 p-3 bg-gray-50 rounded-md">
                         <div className="text-sm text-gray-600 space-y-1">
                             <div><span className="font-medium">학생:</span> {userName}</div>
                             {userClass && <div><span className="font-medium">반:</span> {userClass}</div>}
@@ -158,17 +158,17 @@ const CellEditModal = ({
 
                     {/* 현재 값 표시 */}
                     <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-500 mb-1">
                             현재 값
                         </label>
-                        <div className="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded">
+                        <div className="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-md">
                             {currentValue || '(미기록)'}
                         </div>
                     </div>
 
                     {/* 입력 필드 */}
                     <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-500 mb-2">
                             새 값
                         </label>
                         <div className="relative">
@@ -181,7 +181,7 @@ const CellEditModal = ({
                                 placeholder="출석 상태를 입력하세요 (O, X, 또는 기타)"
                                 disabled={loading}
                                 className="
-                                    w-full px-3 py-2 border border-gray-300 rounded-lg
+                                    w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
                                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                                     disabled:bg-gray-100 disabled:cursor-not-allowed
                                     text-center text-lg
@@ -193,7 +193,7 @@ const CellEditModal = ({
                                 disabled={loading}
                                 className="
                                     absolute right-2 top-1/2 transform -translate-y-1/2
-                                    text-gray-400 hover:text-gray-600 disabled:opacity-50
+                                    text-gray-500 hover:text-gray-700 disabled:opacity-50
                                 "
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,7 +214,7 @@ const CellEditModal = ({
                                             onClick={() => handlePresetSelect(preset.value)}
                                             disabled={loading}
                                             className={`
-                                                px-3 py-2 rounded text-sm font-medium border transition-colors
+                                                px-3 py-2 rounded-md text-sm font-medium border border-gray-300 transition-colors
                                                 ${preset.bgColor} ${preset.color}
                                                 disabled:opacity-50 disabled:cursor-not-allowed
                                             `}
@@ -230,7 +230,7 @@ const CellEditModal = ({
 
                     {/* 에러 메시지 */}
                     {error && (
-                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                             <div className="flex items-start">
                                 <svg className="w-5 h-5 text-red-400 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -244,7 +244,7 @@ const CellEditModal = ({
                     )}
 
                     {/* 도움말 */}
-                    <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
+                    <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-md">
                         <div className="font-medium mb-1">입력 가이드</div>
                         <ul className="space-y-1">
                             <li>• <strong>O</strong>: 출석 (녹색 표시)</li>
@@ -256,7 +256,7 @@ const CellEditModal = ({
                 </div>
 
                 {/* 모달 푸터 */}
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex items-center justify-between">
                     <div className="text-xs text-gray-500">
                         💡 Enter로 저장, Esc로 취소
                     </div>
@@ -267,8 +267,7 @@ const CellEditModal = ({
                             onClick={onClose}
                             disabled={loading}
                             className="
-                                px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300
-                                rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                                inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50
                                 disabled:opacity-50 disabled:cursor-not-allowed
                             "
                         >
@@ -279,13 +278,12 @@ const CellEditModal = ({
                             onClick={handleSave}
                             disabled={loading}
                             className="
-                                px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent
-                                rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2
+                                inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700
+                                disabled:opacity-50 disabled:cursor-not-allowed
                             "
                         >
                             {loading && (
-                                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
