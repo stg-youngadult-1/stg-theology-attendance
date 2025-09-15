@@ -10,7 +10,7 @@ import React from 'react';
  * @param {boolean} props.loading - 로딩 상태
  * @param {Object} props.config - 설정 정보
  */
-const SheetsHeader = ({ data, onRefresh, loading, config }) => {
+const SheetsHeader = ({data, onRefresh, loading, config}) => {
     const formatLastUpdated = (timestamp) => {
         if (!timestamp) return '알 수 없음';
         return new Date(timestamp).toLocaleString('ko-KR', {
@@ -23,16 +23,15 @@ const SheetsHeader = ({ data, onRefresh, loading, config }) => {
     };
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border mb-6">
+        <div className=" rounded-lg overflow-hidden mb-6">
             {/* 메인 헤더 */}
-            <div className="p-6 border-b">
+            <div className="mb-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-2">
-                            <span role="img" aria-label="스프레드시트">📊</span>
-                            Google Sheets 데이터 뷰어
+                        <h1 className="text-2xl font-bold text-gray-900 mb-1 flex items-center space-x-2">
+                            25-2학기
                         </h1>
-                        <p className="text-gray-600">
+                        <p className="text-sm text-gray-600">
                             {config?.sheetName ? `${config.sheetName} 시트의 데이터를 표시합니다` : '스프레드시트 데이터를 불러와서 표시합니다'}
                         </p>
                     </div>
@@ -43,16 +42,13 @@ const SheetsHeader = ({ data, onRefresh, loading, config }) => {
                             onClick={onRefresh}
                             disabled={loading}
                             className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200
-                ${loading
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm hover:shadow-md'
-                            }
-              `}
+                                inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors
+                                ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+                            `}
                         >
-              <span className={`text-sm ${loading ? 'animate-spin' : ''}`}>
-                🔄
-              </span>
+                            <span className={`mr-2 ${loading ? 'animate-spin' : ''}`}>
+                                🔄
+                            </span>
                             {loading ? '새로고침 중...' : '새로고침'}
                         </button>
                     )}
@@ -61,83 +57,151 @@ const SheetsHeader = ({ data, onRefresh, loading, config }) => {
 
             {/* 데이터 정보 */}
             {data && (
-                <div className="p-4 bg-gray-50">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         {/* 총 행 수 */}
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-blue-600">
-                                {data.totalRows?.toLocaleString() || 0}
-                            </div>
-                            <div className="text-sm text-gray-600 font-medium">
-                                총 행 수
+                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
+                            <div className="px-4 py-5 sm:p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <div
+                                            className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <span class="text-blue-600 text-lg">📊</span>
+                                        </div>
+                                    </div>
+                                    <div className="ml-4">
+                                        <p className="text-sm font-medium text-gray-500">총 행 수</p>
+                                        <p className="text-lg font-semibold text-gray-900">{data.totalRows?.toLocaleString() || 0}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {/* 데이터 행 수 */}
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-green-600">
-                                {data.dataRowCount?.toLocaleString() || 0}
-                            </div>
-                            <div className="text-sm text-gray-600 font-medium">
-                                데이터 행
+                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
+                            <div className="px-4 py-5 sm:p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <div
+                                            className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                            <span class="text-green-600 text-lg">✅</span>
+                                        </div>
+                                    </div>
+                                    <div className="ml-4">
+                                        <p className="text-sm font-medium text-gray-500">데이터 행</p>
+                                        <p className="text-lg font-semibold text-gray-900">{data.dataRowCount?.toLocaleString() || 0}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {/* 컬럼 수 */}
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-purple-600">
-                                {data.headers?.length || 0}
-                            </div>
-                            <div className="text-sm text-gray-600 font-medium">
-                                컬럼 수
+                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
+                            <div className="px-4 py-5 sm:p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <div
+                                            className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <span class="text-purple-600 text-lg">📝</span>
+                                        </div>
+                                    </div>
+                                    <div className="ml-4">
+                                        <p className="text-sm font-medium text-gray-500">컬럼 수</p>
+                                        <p className="text-lg font-semibold text-gray-900">{data.headers?.length || 0}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {/* 마지막 업데이트 */}
-                        <div className="text-center">
-                            <div className="text-sm font-bold text-gray-800">
-                                {formatLastUpdated(data.lastUpdated)}
+                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
+                            <div className="px-4 py-5 sm:p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <div
+                                            className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                                            <span class="text-yellow-600 text-lg">⏰</span>
+                                        </div>
+                                    </div>
+                                    <div className="ml-4">
+                                        <p className="text-sm font-medium text-gray-500">마지막 업데이트</p>
+                                        <p className="text-sm font-semibold text-gray-900">{formatLastUpdated(data.lastUpdated)}</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="text-sm text-gray-600 font-medium">
-                                마지막 업데이트
+                        </div>
+                        {/*</div>*/}
+                    </div>
+
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
+                            <div className="px-4 py-5 sm:p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <div
+                                            className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                            <i className="fas fa-check text-green-600"></i>
+                                        </div>
+                                    </div>
+                                    <div className="ml-4">
+                                        <p className="text-sm font-medium text-gray-500">출석</p>
+                                        <p className="text-lg font-semibold text-gray-900">28명</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
+                            <div className="px-4 py-5 sm:p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <div
+                                            className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                                            <i className="fas fa-clock text-yellow-600"></i>
+                                        </div>
+                                    </div>
+                                    <div className="ml-4">
+                                        <p className="text-sm font-medium text-gray-500">지각</p>
+                                        <p className="text-lg font-semibold text-gray-900">2명</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
+                            <div className="px-4 py-5 sm:p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <div
+                                            className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                            <i className="fas fa-times text-red-600"></i>
+                                        </div>
+                                    </div>
+                                    <div className="ml-4">
+                                        <p className="text-sm font-medium text-gray-500">결석</p>
+                                        <p className="text-lg font-semibold text-gray-900">0명</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white overflow-hidden shadow-sm rounded-lg">
+                            <div className="px-4 py-5 sm:p-6">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <div
+                                            className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <i className="fas fa-users text-blue-600"></i>
+                                        </div>
+                                    </div>
+                                    <div className="ml-4">
+                                        <p className="text-sm font-medium text-gray-500">총원</p>
+                                        <p className="text-lg font-semibold text-gray-900">30명</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    {/* 설정 정보 */}
-                    {config && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                                {config.sheetName && (
-                                    <div className="flex items-center gap-1">
-                                        <span className="font-medium">시트:</span>
-                                        <code className="bg-gray-200 px-2 py-1 rounded text-xs">
-                                            {config.sheetName}
-                                        </code>
-                                    </div>
-                                )}
-
-                                {config.range && (
-                                    <div className="flex items-center gap-1">
-                                        <span className="font-medium">범위:</span>
-                                        <code className="bg-gray-200 px-2 py-1 rounded text-xs">
-                                            {config.range}
-                                        </code>
-                                    </div>
-                                )}
-
-                                {config.refetchInterval > 0 && (
-                                    <div className="flex items-center gap-1">
-                                        <span className="font-medium">자동 새로고침:</span>
-                                        <span className="text-green-600 font-semibold">
-                      {Math.floor(config.refetchInterval / 1000)}초마다
-                    </span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
                 </div>
+
             )}
         </div>
     );

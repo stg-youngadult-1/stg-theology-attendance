@@ -113,7 +113,7 @@ const SheetsTable = ({
         if (key !== 'name') return null;
 
         if (sortConfig.key !== key) {
-            return <span className="text-gray-400">⇅</span>;
+            return <span className="text-gray-500">⇅</span>;
         }
         return sortConfig.direction === 'asc'
             ? <span className="text-blue-600">↑</span>
@@ -172,19 +172,20 @@ const SheetsTable = ({
     }
 
     return (
-        <div className={`bg-white rounded-lg shadow-sm border overflow-hidden ${className}`}>
+        <div className={`bg-white shadow-sm rounded-lg overflow-hidden ${className}`}>
             {/* 테이블 헤더 */}
-            <div className="px-6 py-4 border-b bg-gray-50">
+            <div className="px-6 py-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        📋 25 가을학기
+                    <h3 className="text-lg font-medium text-gray-900 flex items-center space-x-2">
+                        <span>📋</span>
+                        <span>25 가을학기</span>
                         {cellUpdateLoading && (
                             <span className="text-sm text-blue-600 animate-pulse">저장 중...</span>
                         )}
                     </h3>
 
                     {/* 검색 입력 */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center space-x-4">
                         <div className="relative">
                             <input
                                 type="text"
@@ -192,7 +193,7 @@ const SheetsTable = ({
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="
-                                    pl-8 pr-4 py-2 border border-gray-300 rounded-lg
+                                    pl-8 pr-4 py-2 border border-gray-300 rounded-md shadow-sm
                                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                                     text-sm w-64
                                 "
@@ -214,20 +215,20 @@ const SheetsTable = ({
 
             {/* 테이블 컨테이너 */}
             <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="min-w-full divide-y divide-gray-200">
                     {/* 테이블 헤더 */}
-                    <thead className="bg-gray-100 sticky top-0">
+                    <thead className="bg-gray-50">
                     <tr>
                         {/* 이름 열 */}
                         <th
                             onClick={() => handleSort('name')}
                             className="
-                                    px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
-                                    cursor-pointer hover:bg-gray-200 transition-colors select-none
-                                    border-r border-gray-200
-                                "
+                                px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
+                                cursor-pointer hover:bg-gray-100 transition-colors select-none
+                                border-r border-gray-200
+                            "
                         >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center space-x-2">
                                 <span>이름</span>
                                 {getSortIcon('name')}
                             </div>
@@ -235,9 +236,9 @@ const SheetsTable = ({
 
                         {/* 반 열 */}
                         <th className="
-                                px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
-                                border-r border-gray-200
-                            ">
+                            px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
+                            border-r border-gray-200
+                        ">
                             반
                         </th>
 
@@ -246,15 +247,15 @@ const SheetsTable = ({
                             <th
                                 key={index}
                                 className="
-                                        px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider
-                                        border-r border-gray-200 last:border-r-0 min-w-[80px]
-                                    "
+                                    px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider
+                                    border-r border-gray-200 last:border-r-0 min-w-[80px]
+                                "
                             >
-                                <div className="flex flex-col items-center gap-1">
+                                <div className="flex flex-col items-center space-y-1">
                                     <span>{header.lecture}</span>
                                     <span className="text-xs text-gray-400 font-normal">
-                                            {formatDate(header.date)}
-                                        </span>
+                                        {formatDate(header.date)}
+                                    </span>
                                 </div>
                             </th>
                         ))}
@@ -262,7 +263,7 @@ const SheetsTable = ({
                     </thead>
 
                     {/* 테이블 바디 */}
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-200">
                     {processedData.length === 0 ? (
                         <tr>
                             <td
@@ -287,21 +288,21 @@ const SheetsTable = ({
                         processedData.map((row, rowIndex) => (
                             <tr
                                 key={rowIndex}
-                                className="hover:bg-blue-50 transition-colors"
+                                className="hover:bg-gray-50 transition-colors"
                             >
                                 {/* 이름 셀 */}
                                 <td className="
-                                        px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900
-                                        border-r border-gray-100
-                                    ">
+                                    px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900
+                                    border-r border-gray-100
+                                ">
                                     {row.user?.name || '-'}
                                 </td>
 
                                 {/* 반 셀 */}
                                 <td className="
-                                        px-6 py-4 whitespace-nowrap text-sm text-gray-600
-                                        border-r border-gray-100
-                                    ">
+                                    px-6 py-4 whitespace-nowrap text-sm text-gray-500
+                                    border-r border-gray-100
+                                ">
                                     {row.user?.class || '-'}
                                 </td>
 
@@ -328,7 +329,7 @@ const SheetsTable = ({
                                                         ${style.className} 
                                                         max-w-[60px] truncate mx-auto
                                                         ${isClickable ? 'cursor-pointer' : 'cursor-not-allowed'}
-                                                        ${isHovered && isClickable ? 'bg-blue-100 rounded px-2 py-1' : ''}
+                                                        ${isHovered && isClickable ? 'bg-blue-50 rounded px-2 py-1' : ''}
                                                         ${cellUpdateLoading ? 'opacity-50' : ''}
                                                         transition-all duration-150
                                                     `}
@@ -363,7 +364,7 @@ const SheetsTable = ({
                                             "
                                         >
                                             <div
-                                                className="cursor-pointer hover:bg-blue-100 rounded px-2 py-1 transition-all duration-150"
+                                                className="cursor-pointer hover:bg-blue-50 rounded px-2 py-1 transition-all duration-150"
                                                 title="클릭하여 편집"
                                                 onClick={() => !cellUpdateLoading && handleCellClick(rowIndex, colIndex, { status: 'None', desc: '' })}
                                             >
@@ -381,39 +382,41 @@ const SheetsTable = ({
 
             {/* 테이블 푸터 */}
             {processedData.length > 0 && (
-                <div className="px-6 py-3 bg-gray-50 border-t text-sm text-gray-600 flex justify-between items-center">
-                    <div>
-                        {searchTerm && (
-                            <button
-                                onClick={() => setSearchTerm('')}
-                                className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
-                                disabled={cellUpdateLoading}
-                            >
-                                검색 필터 초기화
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        {sortConfig.key !== null && (
-                            <button
-                                onClick={() => setSortConfig({ key: null, direction: 'asc' })}
-                                className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
-                                disabled={cellUpdateLoading}
-                            >
-                                정렬 초기화
-                            </button>
-                        )}
-
+                <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
                         <div>
-                            표시 중: <span className="font-medium">{processedData.length}</span>명
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 text-sm"
+                                    disabled={cellUpdateLoading}
+                                >
+                                    검색 필터 초기화
+                                </button>
+                            )}
                         </div>
 
-                        {onCellClick && (
-                            <div className="text-xs text-gray-500">
-                                💡 출석 셀을 클릭하여 편집
+                        <div className="flex items-center space-x-4">
+                            {sortConfig.key !== null && (
+                                <button
+                                    onClick={() => setSortConfig({ key: null, direction: 'asc' })}
+                                    className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 text-sm"
+                                    disabled={cellUpdateLoading}
+                                >
+                                    정렬 초기화
+                                </button>
+                            )}
+
+                            <div className="text-sm text-gray-700">
+                                표시 중: <span className="font-medium">{processedData.length}</span>명
                             </div>
-                        )}
+
+                            {onCellClick && (
+                                <div className="text-xs text-gray-500">
+                                    💡 출석 셀을 클릭하여 편집
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

@@ -105,7 +105,7 @@ const SheetsViewer = ({ options = {}, className = '' }) => {
     // 에러 상태 렌더링
     if (error) {
         return (
-            <div className={`container mx-auto px-4 py-8 ${className}`}>
+            <div className={`container max-w-7xl mx-auto px-4 py-8 ${className}`}>
                 <SheetsHeader config={config} />
                 <ErrorMessage
                     error={error}
@@ -137,7 +137,7 @@ const SheetsViewer = ({ options = {}, className = '' }) => {
     // 로딩 상태 렌더링
     if (loading && !data) {
         return (
-            <div className={`container mx-auto px-4 py-8 ${className}`}>
+            <div className={`container max-w-7xl mx-auto px-4 py-8 ${className}`}>
                 <SheetsHeader config={config} />
                 <LoadingSpinner
                     message="스프레드시트 데이터를 불러오는 중입니다..."
@@ -149,7 +149,7 @@ const SheetsViewer = ({ options = {}, className = '' }) => {
 
     // 성공 상태 렌더링
     return (
-        <div className={`container mx-auto px-4 py-8 ${className}`}>
+        <div className={`container max-w-7xl mx-auto px-4 py-8 ${className}`}>
             {/* 헤더 */}
             <SheetsHeader
                 data={data}
