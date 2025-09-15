@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import SheetsTableSkeleton from "./SheetsTableSkeleton.jsx";
 import SheetsTableWithNoData from "./SheetsTableWithNoData.jsx";
 
@@ -48,11 +48,20 @@ const getAttendanceStyle = (status) => {
  * @param {Object} props
  * @param {Object} props.data - 스프레드시트 데이터
  * @param {boolean} props.loading - 로딩 상태
+ * @param {Function} props.onCellClick - 셀 클릭 콜백 (rowIndex, colIndex, currentValue, cellInfo)
+ * @param {boolean} props.cellUpdateLoading - 셀 업데이트 로딩 상태
  * @param {string} props.className - 추가 CSS 클래스
  */
-const SheetsTable = ({ data, loading, className = '' }) => {
+const SheetsTable = ({
+                         data,
+                         loading,
+                         onCellClick,
+                         cellUpdateLoading = false,
+                         className = ''
+                     }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [hoveredCell, setHoveredCell] = useState(null);
 
     // 데이터 검색 및 정렬
     const processedData = useMemo(() => {
@@ -111,6 +120,47 @@ const SheetsTable = ({ data, loading, className = '' }) => {
             : <span className="text-blue-600">↓</span>;
     };
 
+    // 셀 클릭 핸들러
+    const handleCellClick = useCallback((rowIndex, colIndex, attendance) => {
+        if (!onCellClick) return;
+
+        // 현재 값 계산
+        const currentValue = attendance?.status === 'Etc'
+            ? attendance.desc
+            : attendance?.status === 'None'
+                ? ''
+                : (attendance?.status || '');
+
+        // 원본 데이터에서의 실제 행 인덱스 찾기
+        const originalRowIndex = data.dataRows.findIndex(row =>
+            row.user?.name === processedData[rowIndex]?.user?.name
+        );
+
+        // 셀 정보 구성
+        const cellInfo = {
+            userName: processedData[rowIndex]?.user?.name,
+            userClass: processedData[rowIndex]?.user?.class,
+            lectureInfo: data.headers[colIndex],
+            attendance: attendance
+        };
+
+        onCellClick(originalRowIndex, colIndex, currentValue, cellInfo);
+    }, [onCellClick, data, processedData]);
+
+    // 셀 호버 핸들러
+    const handleCellMouseEnter = useCallback((rowIndex, colIndex) => {
+        setHoveredCell({ rowIndex, colIndex });
+    }, []);
+
+    const handleCellMouseLeave = useCallback(() => {
+        setHoveredCell(null);
+    }, []);
+
+    // 셀이 편집 가능한지 확인
+    const isCellHovered = useCallback((rowIndex, colIndex) => {
+        return hoveredCell?.rowIndex === rowIndex && hoveredCell?.colIndex === colIndex;
+    }, [hoveredCell]);
+
     // 로딩 상태
     if (loading) {
         return <SheetsTableSkeleton className/>;
@@ -128,6 +178,9 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                         📋 25 가을학기
+                        {cellUpdateLoading && (
+                            <span className="text-sm text-blue-600 animate-pulse">저장 중...</span>
+                        )}
                     </h3>
 
                     {/* 검색 입력 */}
@@ -143,6 +196,7 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                                     text-sm w-64
                                 "
+                                disabled={cellUpdateLoading}
                             />
                             <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
                         </div>
@@ -258,20 +312,44 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                                             ? style.content
                                             : attendance.desc;
 
+                                        const isHovered = isCellHovered(rowIndex, colIndex);
+                                        const isClickable = !cellUpdateLoading;
+
                                         return (
                                             <td
                                                 key={colIndex}
                                                 className="
                                                     px-4 py-4 whitespace-nowrap text-sm text-center
-                                                    border-r border-gray-100 last:border-r-0
+                                                    border-r border-gray-100 last:border-r-0 relative
                                                 "
                                             >
                                                 <div
-                                                    className={`${style.className} max-w-[60px] truncate mx-auto`}
-                                                    title={attendance.status === 'Etc' ? attendance.desc : attendance.status}
+                                                    className={`
+                                                        ${style.className} 
+                                                        max-w-[60px] truncate mx-auto
+                                                        ${isClickable ? 'cursor-pointer' : 'cursor-not-allowed'}
+                                                        ${isHovered && isClickable ? 'bg-blue-100 rounded px-2 py-1' : ''}
+                                                        ${cellUpdateLoading ? 'opacity-50' : ''}
+                                                        transition-all duration-150
+                                                    `}
+                                                    title={
+                                                        isClickable
+                                                            ? `클릭하여 편집 (${attendance.status === 'Etc' ? attendance.desc : attendance.status})`
+                                                            : '저장 중...'
+                                                    }
+                                                    onClick={() => isClickable && handleCellClick(rowIndex, colIndex, attendance)}
+                                                    onMouseEnter={() => isClickable && handleCellMouseEnter(rowIndex, colIndex)}
+                                                    onMouseLeave={() => isClickable && handleCellMouseLeave()}
                                                 >
                                                     {displayContent || '-'}
                                                 </div>
+
+                                                {/* 편집 가능 표시 */}
+                                                {isHovered && isClickable && (
+                                                    <div className="absolute top-1 right-1">
+                                                        <div className="w-2 h-2 bg-blue-500 rounded-full opacity-60"></div>
+                                                    </div>
+                                                )}
                                             </td>
                                         );
                                     }) ||
@@ -284,7 +362,13 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                                                 border-r border-gray-100 last:border-r-0
                                             "
                                         >
-                                            -
+                                            <div
+                                                className="cursor-pointer hover:bg-blue-100 rounded px-2 py-1 transition-all duration-150"
+                                                title="클릭하여 편집"
+                                                onClick={() => !cellUpdateLoading && handleCellClick(rowIndex, colIndex, { status: 'None', desc: '' })}
+                                            >
+                                                -
+                                            </div>
                                         </td>
                                     ))
                                 }
@@ -302,7 +386,8 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                         {searchTerm && (
                             <button
                                 onClick={() => setSearchTerm('')}
-                                className="text-blue-600 hover:text-blue-800 font-medium"
+                                className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
+                                disabled={cellUpdateLoading}
                             >
                                 검색 필터 초기화
                             </button>
@@ -313,7 +398,8 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                         {sortConfig.key !== null && (
                             <button
                                 onClick={() => setSortConfig({ key: null, direction: 'asc' })}
-                                className="text-blue-600 hover:text-blue-800 font-medium"
+                                className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
+                                disabled={cellUpdateLoading}
                             >
                                 정렬 초기화
                             </button>
@@ -322,6 +408,12 @@ const SheetsTable = ({ data, loading, className = '' }) => {
                         <div>
                             표시 중: <span className="font-medium">{processedData.length}</span>명
                         </div>
+
+                        {onCellClick && (
+                            <div className="text-xs text-gray-500">
+                                💡 출석 셀을 클릭하여 편집
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

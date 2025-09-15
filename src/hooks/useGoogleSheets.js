@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {SHEETS_CONFIG} from "../services/sheetsConfig.js";
 import googleSheetsData from "../services/GoogleSheetsData.js";
 import googleSheetsAuth from "../services/GoogleSheetsAuth.js";
+import {getColAddress, getRowAddress} from "../services/model.js";
 
 /**
  * Google Sheets 데이터를 관리하는 커스텀 훅
@@ -15,6 +16,8 @@ import googleSheetsAuth from "../services/GoogleSheetsAuth.js";
  * @param {number} options.refetchInterval - 자동 새로고침 간격 (밀리초, 0이면 비활성화)
  * @param {Function} options.onSuccess - 성공 콜백
  * @param {Function} options.onError - 에러 콜백
+ * @param {Function} options.onCellUpdate - 셀 업데이트 성공 콜백
+ * @param {Function} options.onCellUpdateError - 셀 업데이트 에러 콜백
  * @returns {Object} 훅 반환값
  */
 export const useGoogleSheets = (options = {}) => {
@@ -25,7 +28,9 @@ export const useGoogleSheets = (options = {}) => {
         autoFetch = true,
         refetchInterval = 0,
         onSuccess,
-        onError
+        onError,
+        onCellUpdate,
+        onCellUpdateError
     } = options;
 
     // 상태 관리
@@ -33,11 +38,59 @@ export const useGoogleSheets = (options = {}) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [lastFetch, setLastFetch] = useState(null);
+    const [cellUpdateLoading, setCellUpdateLoading] = useState(false);
 
     // ref를 사용해서 최신 상태 추적
     const isAuthenticatedRef = useRef(false);
     const abortControllerRef = useRef(null);
     const intervalRef = useRef(null);
+
+    /**
+     * 행/열 인덱스를 A1 표기법으로 변환
+     * @param {number} rowIndex - 행 인덱스 (0부터 시작)
+     * @param {number} colIndex - 열 인덱스 (0부터 시작)
+     * @returns {string} A1 표기법 셀 주소
+     */
+    const getSheetCellAddress = useCallback((rowIndex, colIndex) => {
+        // 출석 데이터는 3행부터 시작 (헤더 2행 + 1-based)
+        const row = getRowAddress(rowIndex);
+
+        // 출석 데이터는 C열부터 시작 (이름/반 제외)
+        const col = getColAddress(colIndex);
+
+        return `${col}${row}`;
+    }, []);
+
+    /**
+     * 셀 주소에서 행/열 인덱스 추출
+     * @param {string} cellAddress - A1 표기법 셀 주소
+     * @returns {Object} {rowIndex, colIndex}
+     */
+    const parseCellAddress = useCallback((cellAddress) => {
+        const match = cellAddress.match(/^([A-Z]+)(\d+)$/);
+        if (!match) {
+            throw new Error(`유효하지 않은 셀 주소: ${cellAddress}`);
+        }
+
+        const colLetters = match[1];
+        const rowNumber = parseInt(match[2], 10);
+
+        // 열 문자를 숫자로 변환 (A=0, B=1, C=2...)
+        let colIndex = 0;
+        for (let i = 0; i < colLetters.length; i++) {
+            colIndex = colIndex * 26 + (colLetters.charCodeAt(i) - 65 + 1);
+        }
+        colIndex -= 1; // 0-based로 변환
+
+        // 출석 데이터 기준으로 인덱스 계산
+        const dataRowIndex = rowNumber - 3; // 헤더 2행 제외
+        const attendanceColIndex = colIndex - 2; // C열부터 시작하므로 -2
+
+        return {
+            rowIndex: dataRowIndex,
+            colIndex: attendanceColIndex
+        };
+    }, []);
 
     /**
      * 에러 처리 헬퍼
@@ -161,6 +214,159 @@ export const useGoogleSheets = (options = {}) => {
     }, [spreadsheetId, sheetName, range, authenticate, handleError, handleSuccess]);
 
     /**
+     * 셀 업데이트 (낙관적 업데이트 + CAS)
+     * @param {number} rowIndex - 데이터 행 인덱스 (0부터 시작)
+     * @param {number} colIndex - 출석 열 인덱스 (0부터 시작)
+     * @param {string} newValue - 새로운 값
+     * @returns {Promise<boolean>} 업데이트 성공 여부
+     */
+    const updateCell = useCallback(async (rowIndex, colIndex, newValue) => {
+        if (!data || !data.dataRows) {
+            throw new Error('데이터가 로드되지 않았습니다.');
+        }
+
+        if (rowIndex < 0 || rowIndex >= data.dataRows.length) {
+            throw new Error(`유효하지 않은 행 인덱스: ${rowIndex}`);
+        }
+
+        if (colIndex < 0 || colIndex >= data.headers.length) {
+            throw new Error(`유효하지 않은 열 인덱스: ${colIndex}`);
+        }
+
+        const targetRow = data.dataRows[rowIndex];
+        const currentValue = targetRow.attendance?.[colIndex]?.status === 'Etc'
+            ? targetRow.attendance[colIndex].desc
+            : targetRow.attendance?.[colIndex]?.status || '';
+
+        try {
+            setCellUpdateLoading(true);
+
+            // 인증 확인
+            const isAuthenticated = await authenticate();
+            if (!isAuthenticated) {
+                throw new Error('인증이 필요합니다.');
+            }
+
+            // 셀 주소 계산
+            const cellAddress = getSheetCellAddress(rowIndex, colIndex);
+            console.log(`📝 셀 업데이트 시도: ${cellAddress} (${targetRow.user?.name})`);
+
+            // 낙관적 업데이트: UI 먼저 업데이트
+            const previousData = { ...data };
+            const updatedData = { ...data };
+            const updatedRow = { ...updatedData.dataRows[rowIndex] };
+            const updatedAttendance = [...(updatedRow.attendance || [])];
+
+            // 새 값에 따른 출석 상태 파싱
+            let newAttendanceItem;
+            if (!newValue || newValue.trim() === '' || newValue.trim() === '-') {
+                newAttendanceItem = { status: 'None', desc: '' };
+            } else if (newValue.trim() === 'X') {
+                newAttendanceItem = { status: 'X', desc: '' };
+            } else if (newValue.trim() === 'O') {
+                newAttendanceItem = { status: 'O', desc: '' };
+            } else {
+                newAttendanceItem = { status: 'Etc', desc: newValue.trim() };
+            }
+
+            updatedAttendance[colIndex] = newAttendanceItem;
+            updatedRow.attendance = updatedAttendance;
+            updatedData.dataRows[rowIndex] = updatedRow;
+
+            // 낙관적 업데이트 적용
+            setData(updatedData);
+
+            // CAS를 사용한 실제 업데이트
+            const updateResult = await googleSheetsData.updateCellWithCAS(
+                spreadsheetId,
+                sheetName,
+                cellAddress,
+                newValue,
+                currentValue
+            );
+
+            console.log('✅ 셀 업데이트 성공:', cellAddress);
+
+            // 성공 콜백 호출
+            if (onCellUpdate) {
+                onCellUpdate({
+                    rowIndex,
+                    colIndex,
+                    cellAddress,
+                    previousValue: currentValue,
+                    newValue,
+                    userName: targetRow.user?.name,
+                    updateResult
+                });
+            }
+
+            return true;
+
+        } catch (err) {
+            console.error('❌ 셀 업데이트 실패:', err.message);
+
+            // CAS 충돌인 경우 원본 데이터로 복원하고 새로고침
+            if (err.message.includes('CONFLICT:')) {
+                console.log('🔄 데이터 충돌 감지 - 새로고침 수행');
+
+                // 에러 상태 설정
+                const conflictError = `데이터가 이미 수정되었습니다. 새로고침 후 다시 시도해주세요. ${err.message}`;
+
+                // 에러 콜백 호출
+                if (onCellUpdateError) {
+                    onCellUpdateError({
+                        rowIndex,
+                        colIndex,
+                        error: err,
+                        isConflict: true,
+                        userName: data.dataRows[rowIndex]?.user?.name
+                    });
+                }
+
+                // 백그라운드에서 새로고침
+                await fetchData({ showLoading: false });
+
+                throw new Error(conflictError);
+            } else {
+                // 일반적인 에러인 경우 이전 상태 복원
+                setData(data);
+
+                if (onCellUpdateError) {
+                    onCellUpdateError({
+                        rowIndex,
+                        colIndex,
+                        error: err,
+                        isConflict: false,
+                        userName: data.dataRows[rowIndex]?.user?.name
+                    });
+                }
+
+                throw err;
+            }
+
+        } finally {
+            setCellUpdateLoading(false);
+        }
+    }, [data, spreadsheetId, sheetName, authenticate, getSheetCellAddress, onCellUpdate, onCellUpdateError, fetchData]);
+
+    /**
+     * 특정 셀의 현재 값 조회
+     * @param {number} rowIndex - 데이터 행 인덱스
+     * @param {number} colIndex - 출석 열 인덱스
+     * @returns {Promise<string>} 현재 셀 값
+     */
+    const getCellValue = useCallback(async (rowIndex, colIndex) => {
+        try {
+            const cellAddress = getSheetCellAddress(rowIndex, colIndex);
+            const value = await googleSheetsData.getCurrentCellValue(spreadsheetId, sheetName, cellAddress);
+            return value;
+        } catch (err) {
+            console.error('셀 값 조회 실패:', err);
+            throw err;
+        }
+    }, [spreadsheetId, sheetName, getSheetCellAddress]);
+
+    /**
      * 데이터 새로고침 (로딩 상태 표시)
      */
     const refetch = useCallback(() => {
@@ -213,6 +419,7 @@ export const useGoogleSheets = (options = {}) => {
         setLoading(false);
         setError(null);
         setLastFetch(null);
+        setCellUpdateLoading(false);
         isAuthenticatedRef.current = false;
     }, []);
 
@@ -274,6 +481,7 @@ export const useGoogleSheets = (options = {}) => {
         loading,
         error,
         lastFetch,
+        cellUpdateLoading,
 
         // 데이터 정보 (data가 있을 때만)
         headers: data?.headers || [],
@@ -290,6 +498,12 @@ export const useGoogleSheets = (options = {}) => {
         clearError,
         reset,
         clearAuth,
+
+        // 셀 업데이트 메서드
+        updateCell,
+        getCellValue,
+        getSheetCellAddress,
+        parseCellAddress,
 
         // 인증 상태
         isAuthenticated: googleSheetsAuth.isAuthenticated(),

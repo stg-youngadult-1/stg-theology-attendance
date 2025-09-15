@@ -2,7 +2,7 @@
 
 import {SHEETS_CONFIG, DEFAULT_REQUEST_OPTIONS} from './sheetsConfig.js';
 import googleSheetsAuth from './GoogleSheetsAuth.js';
-import {getDataRows, getHeader} from "./model.js";
+import {getDataRows, getHeader, isEqualStatus} from "./model.js";
 
 /**
  * Google Sheets 데이터 조회를 담당하는 클래스
@@ -16,16 +16,24 @@ class GoogleSheetsData {
     /**
      * API 요청 헬퍼 메서드
      * @param {string} url - 요청 URL
+     * @param {Object} options - fetch 옵션
      * @returns {Promise<Object>} API 응답 데이터
      */
-    async makeApiRequest(url) {
+    async makeApiRequest(url, options = {}) {
         try {
             // 토큰 유효성 확인 및 필요시 갱신
             await this.auth.ensureValidToken();
 
-            const response = await fetch(url, {
-                headers: this.auth.getAuthHeaders()
-            });
+            const requestOptions = {
+                headers: {
+                    ...this.auth.getAuthHeaders(),
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            };
+
+            const response = await fetch(url, requestOptions);
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -37,9 +45,16 @@ class GoogleSheetsData {
                     await this.auth.authenticate();
 
                     // 재인증 후 재시도
-                    const retryResponse = await fetch(url, {
-                        headers: this.auth.getAuthHeaders()
-                    });
+                    const retryRequestOptions = {
+                        ...requestOptions,
+                        headers: {
+                            ...this.auth.getAuthHeaders(),
+                            'Content-Type': 'application/json',
+                            ...options.headers
+                        }
+                    };
+
+                    const retryResponse = await fetch(url, retryRequestOptions);
 
                     if (!retryResponse.ok) {
                         const retryErrorData = await retryResponse.json().catch(() => ({}));
@@ -96,6 +111,151 @@ class GoogleSheetsData {
         } catch (error) {
             console.error('❌ 데이터 조회 실패:', error.message);
             throw new Error(`스프레드시트 데이터 조회 실패: ${error.message}`);
+        }
+    }
+
+    /**
+     * 특정 셀의 현재 값을 조회 (CAS용)
+     * @param {string} spreadsheetId - 스프레드시트 ID
+     * @param {string} sheetName - 시트명
+     * @param {string} cellAddress - 셀 주소 (예: 'C3')
+     * @returns {Promise<string>} 현재 셀 값
+     */
+    async getCurrentCellValue(
+        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
+        sheetName = SHEETS_CONFIG.sheetName,
+        cellAddress
+    ) {
+        try {
+            console.log(`🔍 셀 값 조회: ${sheetName}!${cellAddress}`);
+
+            const encodedSheetName = encodeURIComponent(sheetName);
+            const encodedRange = encodeURIComponent(cellAddress);
+
+            const queryParams = new URLSearchParams({
+                valueRenderOption: DEFAULT_REQUEST_OPTIONS.valueRenderOption,
+                dateTimeRenderOption: DEFAULT_REQUEST_OPTIONS.dateTimeRenderOption
+            });
+
+            const url = `${SHEETS_CONFIG.api.baseUrl}/${spreadsheetId}/values/${encodedSheetName}!${encodedRange}?${queryParams}`;
+            const data = await this.makeApiRequest(url);
+
+            const currentValue = data.values?.[0]?.[0] || '';
+            console.log(`✅ 현재 셀 값: "${currentValue}"`);
+
+            return currentValue;
+        } catch (error) {
+            console.error('❌ 셀 값 조회 실패:', error.message);
+            throw new Error(`셀 값 조회 실패: ${error.message}`);
+        }
+    }
+
+    /**
+     * 단일 셀 값 업데이트
+     * @param {string} spreadsheetId - 스프레드시트 ID
+     * @param {string} sheetName - 시트명
+     * @param {string} cellAddress - 셀 주소 (예: 'C3')
+     * @param {string} value - 새로운 값
+     * @returns {Promise<Object>} 업데이트 결과
+     */
+    async updateCell(
+        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
+        sheetName = SHEETS_CONFIG.sheetName,
+        cellAddress,
+        value
+    ) {
+        try {
+            console.log(`📝 셀 업데이트 시작: ${sheetName}!${cellAddress} = "${value}"`);
+
+            const encodedSheetName = encodeURIComponent(sheetName);
+            const encodedRange = encodeURIComponent(cellAddress);
+
+            const url = `${SHEETS_CONFIG.api.baseUrl}/${spreadsheetId}/values/${encodedSheetName}!${encodedRange}`;
+
+            const requestBody = {
+                range: `${sheetName}!${cellAddress}`,
+                majorDimension: "ROWS",
+                values: [[value]]
+            };
+
+            const queryParams = new URLSearchParams({
+                valueInputOption: 'USER_ENTERED', // 사용자가 입력한 것처럼 처리 (수식 등 지원)
+                includeValuesInResponse: true,
+                responseValueRenderOption: DEFAULT_REQUEST_OPTIONS.valueRenderOption,
+                responseDateTimeRenderOption: DEFAULT_REQUEST_OPTIONS.dateTimeRenderOption
+            });
+
+            const data = await this.makeApiRequest(`${url}?${queryParams}`, {
+                method: 'PUT',
+                body: JSON.stringify(requestBody)
+            });
+
+            console.log(`✅ 셀 업데이트 완료: ${sheetName}!${cellAddress}`);
+            return {
+                success: true,
+                updatedRange: data.updatedRange,
+                updatedRows: data.updatedRows,
+                updatedColumns: data.updatedColumns,
+                updatedCells: data.updatedCells,
+                updatedData: data.updatedData
+            };
+        } catch (error) {
+            console.error('❌ 셀 업데이트 실패:', error.message);
+            throw new Error(`셀 업데이트 실패: ${error.message}`);
+        }
+    }
+
+    /**
+     * CAS (Compare-And-Swap)를 사용한 안전한 셀 업데이트
+     * @param {string} spreadsheetId - 스프레드시트 ID
+     * @param {string} sheetName - 시트명
+     * @param {string} cellAddress - 셀 주소
+     * @param {string} newValue - 새로운 값
+     * @param {string} expectedValue - 예상되는 현재 값
+     * @returns {Promise<Object>} 업데이트 결과
+     */
+    async updateCellWithCAS(
+        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
+        sheetName = SHEETS_CONFIG.sheetName,
+        cellAddress,
+        newValue,
+        expectedValue
+    ) {
+        try {
+            console.log(`🔒 CAS 업데이트 시작: ${sheetName}!${cellAddress}`);
+            console.log(`   예상값: "${expectedValue}" → 새값: "${newValue}"`);
+
+            // 1. 현재 값 조회
+            const currentValue = await this.getCurrentCellValue(spreadsheetId, sheetName, cellAddress);
+
+            // 2. 값 비교 - 빈 값 처리 고려
+            const normalizedCurrent = (currentValue || '').toString().trim();
+            const normalizedExpected = (expectedValue || '').toString().trim();
+
+            if (!isEqualStatus(normalizedCurrent, normalizedExpected)) {
+                console.log(`❌ CAS 실패: 현재값="${normalizedCurrent}", 예상값="${normalizedExpected}"`);
+                throw new Error(`CONFLICT: 데이터가 이미 수정되었습니다. 현재 값: "${normalizedCurrent}"`);
+            }
+
+            // 3. 값이 동일하면 업데이트 수행
+            const updateResult = await this.updateCell(spreadsheetId, sheetName, cellAddress, newValue);
+
+            console.log(`✅ CAS 업데이트 완료: ${sheetName}!${cellAddress}`);
+            return {
+                ...updateResult,
+                casSuccess: true,
+                previousValue: currentValue,
+                newValue: newValue
+            };
+        } catch (error) {
+            console.error('❌ CAS 업데이트 실패:', error.message);
+
+            // CAS 충돌인지 다른 에러인지 구분
+            if (error.message.includes('CONFLICT:')) {
+                throw error; // CAS 충돌 에러는 그대로 전달
+            } else {
+                throw new Error(`CAS 업데이트 실패: ${error.message}`);
+            }
         }
     }
 

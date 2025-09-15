@@ -1,12 +1,13 @@
 // components/sheets/SheetsViewer.jsx
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useGoogleSheets } from '../../hooks/useGoogleSheets';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import SuccessMessage from '../common/SuccessMessage';
 import SheetsHeader from './SheetsHeader';
 import SheetsTable from './SheetsTable';
+import CellEditModal from '../common/CellEditModal';
 
 /**
  * 스프레드시트 뷰어 메인 컨테이너 컴포넌트
@@ -15,6 +16,11 @@ import SheetsTable from './SheetsTable';
  * @param {string} props.className - 추가 CSS 클래스
  */
 const SheetsViewer = ({ options = {}, className = '' }) => {
+    // 모달 상태 관리
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedCell, setSelectedCell] = useState(null);
+    const [modalError, setModalError] = useState(null);
+
     // Google Sheets 훅 사용
     const {
         data,
@@ -28,8 +34,73 @@ const SheetsViewer = ({ options = {}, className = '' }) => {
         clearError,
         isAuthenticated,
         authStatus,
-        config
-    } = useGoogleSheets(options);
+        config,
+        updateCell,
+        cellUpdateLoading
+    } = useGoogleSheets({
+        ...options,
+        onCellUpdate: (result) => {
+            console.log('셀 업데이트 성공:', result);
+            setIsModalOpen(false);
+            setSelectedCell(null);
+            setModalError(null);
+        },
+        onCellUpdateError: (errorInfo) => {
+            console.error('셀 업데이트 실패:', errorInfo);
+
+            if (errorInfo.isConflict) {
+                // CAS 충돌 - 모달을 닫고 사용자에게 알림
+                setModalError('데이터가 이미 수정되었습니다. 새로고침 후 다시 시도해주세요.');
+                // 3초 후 모달 닫기
+                setTimeout(() => {
+                    setIsModalOpen(false);
+                    setSelectedCell(null);
+                    setModalError(null);
+                }, 3000);
+            } else {
+                // 일반 에러
+                setModalError(errorInfo.error.message || '저장에 실패했습니다.');
+            }
+        }
+    });
+
+    // 셀 클릭 핸들러
+    const handleCellClick = useCallback((rowIndex, colIndex, currentValue, cellInfo) => {
+        setSelectedCell({
+            rowIndex,
+            colIndex,
+            currentValue,
+            cellInfo
+        });
+        setModalError(null);
+        setIsModalOpen(true);
+    }, []);
+
+    // 모달 닫기 핸들러
+    const handleModalClose = useCallback(() => {
+        if (!cellUpdateLoading) {
+            setIsModalOpen(false);
+            setSelectedCell(null);
+            setModalError(null);
+        }
+    }, [cellUpdateLoading]);
+
+    // 셀 저장 핸들러
+    const handleCellSave = useCallback(async (newValue) => {
+        if (!selectedCell) return;
+
+        try {
+            await updateCell(
+                selectedCell.rowIndex,
+                selectedCell.colIndex,
+                newValue
+            );
+            // 성공 시 onCellUpdate 콜백에서 모달을 닫을 것
+        } catch (error) {
+            // 에러는 onCellUpdateError 콜백에서 처리됨
+            throw error;
+        }
+    }, [selectedCell, updateCell]);
 
     // 에러 상태 렌더링
     if (error) {
@@ -104,14 +175,21 @@ const SheetsViewer = ({ options = {}, className = '' }) => {
                         <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-green-400' : 'bg-red-400'}`}></div>
                             <span className="text-green-700">
-                {isAuthenticated ? '인증됨' : '미인증'}
-              </span>
+                                {isAuthenticated ? '인증됨' : '미인증'}
+                            </span>
                         </div>
 
                         {loading && (
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
                                 <span className="text-blue-700">업데이트 중...</span>
+                            </div>
+                        )}
+
+                        {cellUpdateLoading && (
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                                <span className="text-orange-700">셀 저장 중...</span>
                             </div>
                         )}
                     </div>
@@ -122,6 +200,19 @@ const SheetsViewer = ({ options = {}, className = '' }) => {
             <SheetsTable
                 data={data}
                 loading={loading}
+                onCellClick={handleCellClick}
+                cellUpdateLoading={cellUpdateLoading}
+            />
+
+            {/* 셀 편집 모달 */}
+            <CellEditModal
+                isOpen={isModalOpen}
+                onClose={handleModalClose}
+                onSave={handleCellSave}
+                currentValue={selectedCell?.currentValue}
+                cellInfo={selectedCell?.cellInfo}
+                loading={cellUpdateLoading}
+                error={modalError}
             />
         </div>
     );

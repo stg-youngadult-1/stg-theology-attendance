@@ -15,7 +15,7 @@ export const SHEETS_CONFIG = {
     api: {
         baseUrl: 'https://sheets.googleapis.com/v4/spreadsheets',
         tokenUrl: 'https://oauth2.googleapis.com/token',
-        scope: 'https://www.googleapis.com/auth/spreadsheets.readonly'
+        scope: 'https://www.googleapis.com/auth/spreadsheets'
     }
 };
 
