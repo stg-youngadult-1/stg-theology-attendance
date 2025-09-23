@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { useGoogleSheets } from '../../hooks/useGoogleSheets';
+import React, {useState, useMemo, useRef, useEffect} from 'react';
+import {useGoogleSheets} from '../../hooks/useGoogleSheets';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
-import AttendanceSearchBar from './AttendanceSearchBar';
 import AttendanceCard from './AttendanceCard';
 
 /**
@@ -11,9 +10,16 @@ import AttendanceCard from './AttendanceCard';
  * @param {Object} props.options - useGoogleSheets 훅 옵션
  * @param {string} props.className - 추가 CSS 클래스
  */
-const AttendanceCheck = ({ options = {}, className = '' }) => {
-    // 검색 상태 관리
+const AttendanceCheck = ({options = {}, className = ''}) => {
+    // 검색 관련 상태 관리
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedStudent, setSelectedStudent] = useState(null);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+    // DOM 참조
+    const searchInputRef = useRef(null);
+    const dropdownRef = useRef(null);
 
     // Google Sheets 훅 사용
     const {
@@ -29,65 +35,153 @@ const AttendanceCheck = ({ options = {}, className = '' }) => {
         config
     } = useGoogleSheets(options);
 
-    // 검색된 데이터 필터링
-    const filteredData = useMemo(() => {
-        if (!data?.dataRows || data.dataRows.length === 0) return [];
-
-        if (!searchTerm.trim()) {
-            return data.dataRows;
+    // 검색 제안 목록 생성
+    const suggestions = useMemo(() => {
+        if (!data?.dataRows || data.dataRows.length === 0 || !searchTerm.trim()) {
+            return [];
         }
 
         const searchLower = searchTerm.toLowerCase();
-        return data.dataRows.filter(row => {
-            const name = row.user?.name || '';
-            const className = row.user?.class || '';
-
-            return name.toLowerCase().includes(searchLower) ||
-                className.toLowerCase().includes(searchLower);
-        });
+        return data.dataRows
+            .filter(row => {
+                const name = row.user?.name || '';
+                const className = row.user?.class || '';
+                return name.toLowerCase().includes(searchLower) ||
+                    className.toLowerCase().includes(searchLower);
+            })
+            .map((row, originalIndex) => ({
+                ...row,
+                originalIndex: data.dataRows.indexOf(row),
+                displayText: `${row.user?.name || '이름 없음'}`
+            }))
+            .slice(0, 10); // 최대 10개까지만 표시
     }, [data?.dataRows, searchTerm]);
 
-    // 출석 통계 계산
-    const attendanceStats = useMemo(() => {
-        if (!filteredData.length || !data?.headers) return null;
+    // 검색 결과가 1건일 때 자동 선택
+    useEffect(() => {
+        if (suggestions.length === 1 && searchTerm.trim()) {
+            setSelectedStudent(suggestions[0]);
+            setShowDropdown(false);
+        } else if (suggestions.length > 1) {
+            setSelectedStudent(null);
+            setShowDropdown(true);
+        } else if (suggestions.length === 0 && searchTerm.trim()) {
+            setSelectedStudent(null);
+            setShowDropdown(false);
+        } else {
+            setSelectedStudent(null);
+            setShowDropdown(false);
+        }
+    }, [suggestions, searchTerm]);
 
+    // 선택된 학생의 출석 통계 계산
+    const attendanceStats = useMemo(() => {
+        if (!selectedStudent || !data?.headers) return null;
+
+        const attendance = selectedStudent.attendance || [];
         const totalLectures = data.headers.length;
         let totalAttended = 0;
         let totalAbsent = 0;
         let totalEtc = 0;
+        let totalNone = 0;
 
-        filteredData.forEach(row => {
-            if (row.attendance) {
-                row.attendance.forEach(att => {
-                    if (att.status === 'O') totalAttended++;
-                    else if (att.status === 'X') totalAbsent++;
-                    else if (att.status === 'Etc') totalEtc++;
-                });
-            }
+        attendance.forEach(att => {
+            if (att.status === 'O') totalAttended++;
+            else if (att.status === 'X') totalAbsent++;
+            else if (att.status === 'Etc') totalEtc++;
+            else totalNone++;
         });
 
-        const totalRecords = filteredData.length * totalLectures;
-        const attendanceRate = totalRecords > 0 ? (totalAttended / totalRecords * 100) : 0;
+        const recordedLectures = totalAttended + totalAbsent + totalEtc;
+        const attendanceRate = recordedLectures > 0 ? (totalAttended / recordedLectures * 100) : 0;
 
         return {
-            totalStudents: filteredData.length,
             totalLectures,
             totalAttended,
             totalAbsent,
             totalEtc,
+            totalNone,
             attendanceRate: Math.round(attendanceRate * 10) / 10
         };
-    }, [filteredData, data?.headers]);
+    }, [selectedStudent, data?.headers]);
+
+    // 검색어 변경 핸들러
+    const handleSearchChange = (value) => {
+        setSearchTerm(value);
+        setHighlightedIndex(-1);
+
+        if (!value.trim()) {
+            setSelectedStudent(null);
+            setShowDropdown(false);
+        }
+    };
+
+    // 검색어 초기화
+    const handleClearSearch = () => {
+        setSearchTerm('');
+        setSelectedStudent(null);
+        setShowDropdown(false);
+        setHighlightedIndex(-1);
+    };
+
+    // 학생 선택 핸들러
+    const handleSelectStudent = (student) => {
+        setSelectedStudent(student);
+        setSearchTerm(student.displayText);
+        setShowDropdown(false);
+        setHighlightedIndex(-1);
+        searchInputRef.current?.blur();
+    };
+
+    // 키보드 이벤트 핸들러
+    const handleKeyDown = (e) => {
+        if (!showDropdown || suggestions.length === 0) return;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                setHighlightedIndex(prev =>
+                    prev < suggestions.length - 1 ? prev + 1 : 0
+                );
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                setHighlightedIndex(prev =>
+                    prev > 0 ? prev - 1 : suggestions.length - 1
+                );
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+                    handleSelectStudent(suggestions[highlightedIndex]);
+                }
+                break;
+            case 'Escape':
+                setShowDropdown(false);
+                setHighlightedIndex(-1);
+                searchInputRef.current?.blur();
+                break;
+        }
+    };
+
+    // 외부 클릭 감지
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+                searchInputRef.current && !searchInputRef.current.contains(event.target)) {
+                setShowDropdown(false);
+                setHighlightedIndex(-1);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // 에러 상태 렌더링
     if (error) {
         return (
-            <div className={`container mx-auto px-4 py-6 md:max-w-lg md:rounded-3xl  md:shadow-lg mx-auto ${className}`}>
-                <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">출석체크</h2>
-                    <p className="text-gray-600">학생별 출석 현황을 확인하세요</p>
-                </div>
-
+            <div className={`container mx-auto px-4 py-6 md:max-w-lg md:rounded-3xl md:shadow-lg mx-auto ${className}`}>
                 <ErrorMessage
                     error={error}
                     onRetry={refetch}
@@ -116,11 +210,6 @@ const AttendanceCheck = ({ options = {}, className = '' }) => {
     if (loading && !data) {
         return (
             <div className={`container mx-auto px-4 py-6 md:max-w-lg md:rounded-3xl md:shadow-lg mx-auto ${className}`}>
-                <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">출석체크</h2>
-                    <p className="text-gray-600">학생별 출석 현황을 확인하세요</p>
-                </div>
-
                 <LoadingSpinner
                     message="출석 데이터를 불러오는 중입니다..."
                     size="lg"
@@ -131,72 +220,141 @@ const AttendanceCheck = ({ options = {}, className = '' }) => {
 
     // 성공 상태 렌더링
     return (
-        <div className={`container mx-auto px-4 py-6 md:max-w-lg md:rounded-3xl  md:shadow-lg mx-auto ${className}`}>
-            {/* 헤더 */}
-            <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">출석체크</h2>
-                <p className="text-gray-600">학생별 출석 현황을 확인하세요</p>
+        <div className={`container mx-auto px-4 py-6 md:max-w-lg md:rounded-3xl md:shadow-lg mx-auto ${className}`}>
+            {/* 검색바 */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6 relative">
+                <div className="relative mb-4">
+                    <div className="relative">
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            placeholder="이름 또는 반으로 검색..."
+                            value={searchTerm}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            className="
+                                w-full pl-12 pr-12 py-3 text-lg border border-gray-300 rounded-lg shadow-sm
+                                focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                placeholder-gray-400 transition-all duration-200
+                            "
+                            disabled={loading}
+                            autoComplete="off"
+                        />
 
-                {/* 실시간 상태 표시 */}
-                <div className="flex items-center justify-center gap-4 mt-3">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                        <span className="text-sm text-gray-600">
-                            {isAuthenticated ? '연결됨' : '연결 안됨'}
-                        </span>
+                        {/* 검색 아이콘 */}
+                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                 viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </div>
+
+                        {/* 검색어 지우기 버튼 */}
+                        {searchTerm && (
+                            <button
+                                onClick={handleClearSearch}
+                                className="
+                                    absolute right-3 top-1/2 transform -translate-y-1/2
+                                    p-1 text-gray-400 hover:text-gray-600 transition-colors
+                                "
+                                disabled={loading}
+                                aria-label="검색어 지우기"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                          d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        )}
                     </div>
 
-                    {loading && (
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                            <span className="text-sm text-blue-600">업데이트 중...</span>
+                    {/* 드롭다운 */}
+                    {showDropdown && suggestions.length > 0 && (
+                        <div
+                            ref={dropdownRef}
+                            className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto"
+                        >
+                            {suggestions.map((student, index) => (
+                                <button
+                                    key={`${student.user?.name}-${student.originalIndex}`}
+                                    onClick={() => handleSelectStudent(student)}
+                                    className={`
+                                        w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors
+                                        ${index === highlightedIndex ? 'bg-blue-50' : ''}
+                                        ${index === suggestions.length - 1 ? '' : 'border-b border-gray-100'}
+                                    `}
+                                >
+                                    <div className="font-medium text-gray-900">
+                                        {student.user?.name || '이름 없음'}
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                        {student.user?.class || '반 없음'}
+                                    </div>
+                                </button>
+                            ))}
                         </div>
                     )}
+                </div>
 
-                    {lastFetch && (
-                        <div className="text-sm text-gray-500">
-                            최근 업데이트: {new Date(lastFetch).toLocaleString('ko-KR')}
+                {/* 검색 상태 정보 */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                        <div className="text-sm text-gray-600">
+                            {searchTerm ? (
+                                suggestions.length === 1 && selectedStudent ? (
+                                    <span className="text-green-600 font-medium">1명 선택됨</span>
+                                ) : (
+                                    <span>
+                                        <span className="font-medium text-blue-600">{suggestions.length}명</span>
+                                        <span className="text-gray-400 mx-1"> 검색됨</span>
+                                    </span>
+                                )
+                            ) : (
+                                <span>전체 <span className="font-medium">{dataRowCount}명</span></span>
+                            )}
                         </div>
-                    )}
+
+                        {/* 검색어 표시 */}
+                        {searchTerm && (
+                            <div className="flex items-center space-x-2">
+                                <div
+                                    className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-200">
+                                    '{searchTerm}'
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 새로고침 버튼 */}
+                    <button
+                        onClick={refetch}
+                        disabled={loading}
+                        className="
+                            p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50
+                            rounded-lg transition-colors disabled:opacity-50
+                        "
+                        title="데이터 새로고침"
+                        aria-label="데이터 새로고침"
+                    >
+                        <svg
+                            className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
-            {/* 검색바 */}
-            <AttendanceSearchBar
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                onRefresh={refetch}
-                loading={loading}
-                resultCount={filteredData.length}
-                totalCount={dataRowCount}
-            />
-
-            {/* 출석 통계 */}
-            {attendanceStats && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">출석 현황</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-blue-600">{attendanceStats.totalStudents}</div>
-                            <div className="text-sm text-gray-600">총 학생 수</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-green-600">{attendanceStats.attendanceRate}%</div>
-                            <div className="text-sm text-gray-600">출석률</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-green-500">{attendanceStats.totalAttended}</div>
-                            <div className="text-sm text-gray-600">총 출석</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-red-500">{attendanceStats.totalAbsent}</div>
-                            <div className="text-sm text-gray-600">총 결석</div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* 데이터가 없는 경우 */}
+            {/* 메인 컨텐츠 */}
             {!hasData ? (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
                     <div className="text-4xl mb-4">📭</div>
@@ -210,44 +368,106 @@ const AttendanceCheck = ({ options = {}, className = '' }) => {
                         다시 시도
                     </button>
                 </div>
-            ) : filteredData.length === 0 ? (
+            ) : !selectedStudent ? (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
                     <div className="text-4xl mb-4">🔍</div>
-                    <div className="text-lg font-medium text-gray-900 mb-2">검색 결과가 없습니다</div>
-                    <div className="text-gray-600 mb-4">다른 검색어를 입력해보세요</div>
-                    <button
-                        onClick={() => setSearchTerm('')}
-                        className="text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                        검색 초기화
-                    </button>
+                    <div className="text-lg font-medium text-gray-900 mb-2">
+                        {searchTerm ? (
+                            suggestions.length === 0 ? '검색 결과가 없습니다' : '학생을 선택해주세요'
+                        ) : '학생 이름을 검색해주세요'}
+                    </div>
+                    <div className="text-gray-600 mb-4">
+                        {searchTerm ? (
+                            suggestions.length === 0 ? '다른 검색어를 입력해보세요' : '위의 목록에서 학생을 선택하세요'
+                        ) : '이름 또는 반으로 검색하여 출석 현황을 확인하세요'}
+                    </div>
+                    {searchTerm && suggestions.length === 0 && (
+                        <button
+                            onClick={handleClearSearch}
+                            className="text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                            검색 초기화
+                        </button>
+                    )}
                 </div>
             ) : (
-                /* 출석 카드 리스트 */
-                <div className="space-y-4">
-                    {filteredData.map((row, index) => (
-                        <AttendanceCard
-                            key={`${row.user?.name}-${index}`}
-                            student={row.user}
-                            attendance={row.attendance}
-                            headers={data.headers}
-                            loading={loading}
-                        />
-                    ))}
+                <div className="space-y-6">
+                    {/* 선택된 학생의 출석 통계 */}
+                    {attendanceStats && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                            <h3 className="text-lg font-medium text-gray-900 mb-3">
+                                {selectedStudent.user?.name}님의 출석 현황
+                            </h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="text-center">
+                                    <div
+                                        className="text-2xl font-bold text-green-600">{attendanceStats.attendanceRate}%
+                                    </div>
+                                    <div className="text-sm text-gray-600">출석률</div>
+                                </div>
+                                <div className="text-center">
+                                    <div
+                                        className="text-2xl font-bold text-green-500">{attendanceStats.totalAttended}</div>
+                                    <div className="text-sm text-gray-600">총 출석</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-red-500">{attendanceStats.totalAbsent}</div>
+                                    <div className="text-sm text-gray-600">총 결석</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-orange-500">{attendanceStats.totalEtc}</div>
+                                    <div className="text-sm text-gray-600">총 기타</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 선택된 학생의 출석 카드 */}
+                    <AttendanceCard
+                        student={selectedStudent.user}
+                        attendance={selectedStudent.attendance}
+                        headers={data.headers}
+                        loading={loading}
+                    />
                 </div>
             )}
 
             {/* 푸터 정보 */}
             {hasData && (
                 <div className="mt-8 text-center text-sm text-gray-500 space-y-1">
-                    <div>총 {totalRows}행의 데이터 • 최근 업데이트: {lastFetch ? new Date(lastFetch).toLocaleString('ko-KR') : '-'}</div>
-                    {searchTerm && (
-                        <div>
-                            '{searchTerm}' 검색 결과: {filteredData.length}명 / 전체 {dataRowCount}명
-                        </div>
-                    )}
+                    <div>총 {totalRows}행의 데이터
+                        {selectedStudent && (
+                            <span>
+                                - {selectedStudent.user?.name} ({selectedStudent.user?.class}) 출석 정보
+                            </span>
+                        )}
+                    </div>
                 </div>
             )}
+
+
+            {/* 실시간 상태 표시 */}
+            <div className="flex items-center justify-center gap-4 mt-1">
+                <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                    <span className="text-sm text-gray-600">
+                            {isAuthenticated ? '연결됨' : '연결 안됨'}
+                        </span>
+                </div>
+
+                {loading && (
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                        <span className="text-sm text-blue-600">업데이트 중...</span>
+                    </div>
+                )}
+
+                {lastFetch && (
+                    <div className="text-sm text-gray-500">
+                        최근 업데이트: {new Date(lastFetch).toLocaleString('ko-KR')}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
