@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import SheetsViewer from './components/data/SheetsViewer';
+import AttendanceCheck from './components/attendance/AttendanceCheck';
 import FooterComponent from "./components/layout/FooterComponent.jsx";
 import HeaderComponent from "./components/layout/HeaderComponent.jsx";
 
@@ -7,6 +8,9 @@ import HeaderComponent from "./components/layout/HeaderComponent.jsx";
  * 메인 애플리케이션 컴포넌트
  */
 function App() {
+    // 현재 화면 상태 관리
+    const [currentView, setCurrentView] = useState('management'); // 'attendanceCheck' | 'management'
+
     // Google Sheets 뷰어 옵션 설정
     const sheetsOptions = {
         // 자동으로 데이터 로드
@@ -25,17 +29,32 @@ function App() {
         }
     };
 
+    // 화면 전환 핸들러
+    const handleViewChange = (view) => {
+        setCurrentView(view);
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* 페이지 헤더 */}
-            <HeaderComponent/>
+            <HeaderComponent
+                currentView={currentView}
+                onViewChange={handleViewChange}
+            />
 
             {/* 메인 콘텐츠 */}
             <main>
-                <SheetsViewer
-                    options={sheetsOptions}
-                    className="animate-fade-in"
-                />
+                {currentView === 'management' ? (
+                    <SheetsViewer
+                        options={sheetsOptions}
+                        className="animate-fade-in"
+                    />
+                ) : (
+                    <AttendanceCheck
+                        options={sheetsOptions}
+                        className="animate-fade-in"
+                    />
+                )}
             </main>
 
             {/* 푸터 */}
