@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { getAllAttendanceStatuses, getAttendanceStyle, ATTENDANCE_STATUS, ATTENDANCE_CONFIG } from '../../utils/attendanceStatus.js';
 
 /**
  * 셀 편집 모달 컴포넌트
@@ -21,23 +22,79 @@ const CellEditModal = ({
                            error = null
                        }) => {
     const [inputValue, setInputValue] = useState('');
-    const [showPresets, setShowPresets] = useState(false);
     const inputRef = useRef(null);
     const modalRef = useRef(null);
 
-    // 출석 상태 프리셋
-    const attendancePresets = [
-        { value: 'O', label: '출석', color: 'text-green-600', bgColor: 'bg-green-50 hover:bg-green-100' },
-        { value: 'X', label: '결석', color: 'text-red-600', bgColor: 'bg-red-50 hover:bg-red-100' },
-        { value: '', label: '미기록', color: 'text-gray-500', bgColor: 'bg-gray-50 hover:bg-gray-100' },
-    ];
+    // 출석 상태 프리셋을 완전히 동적으로 생성
+    const attendancePresets = useMemo(() => {
+        const allStatuses = getAllAttendanceStatuses();
+
+        return allStatuses.map(statusConfig => {
+            const style = getAttendanceStyle(statusConfig.status);
+
+            return {
+                value: statusConfig.status === ATTENDANCE_STATUS.NONE ? '' : statusConfig.status,
+                label: statusConfig.displayName,
+                shortName: statusConfig.shortName,
+                icon: statusConfig.icon,
+                description: statusConfig.description,
+                isAttendance: statusConfig.isAttendance,
+                style: style
+            };
+        });
+    }, []);
+
+    // 프리셋 정렬 (자주 사용되는 것들 우선)
+    const sortedPresets = useMemo(() => {
+        // 기본 상태들을 우선순위로 배치
+        const primaryStates = [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.ABSENT, ATTENDANCE_STATUS.NONE];
+
+        const primaryItems = attendancePresets.filter(preset => {
+            const actualStatus = preset.value === '' ? ATTENDANCE_STATUS.NONE : preset.value;
+            return primaryStates.includes(actualStatus);
+        });
+
+        const secondaryItems = attendancePresets.filter(preset => {
+            const actualStatus = preset.value === '' ? ATTENDANCE_STATUS.NONE : preset.value;
+            return !primaryStates.includes(actualStatus);
+        });
+
+        return [...primaryItems, ...secondaryItems];
+    }, [attendancePresets]);
+
+    // 도움말 텍스트를 동적으로 생성
+    const helpGuide = useMemo(() => {
+        const guides = Object.entries(ATTENDANCE_CONFIG)
+            .filter(([status, config]) => status !== ATTENDANCE_STATUS.OTHER) // 기타는 제외
+            .map(([status, config]) => {
+                const displayValue = config.shortName === '-' ? '빈 값' : config.shortName;
+                const attendanceStatus = config.isAttendance ? '출석 인정' : '미출석';
+                const colorClass = getAttendanceStyle(status).className.split(' ')[0]; // 첫 번째 색상 클래스만 추출
+
+                return {
+                    value: displayValue,
+                    description: config.displayName,
+                    status: attendanceStatus,
+                    colorClass: colorClass
+                };
+            });
+
+        return guides;
+    }, []);
+
+    // 그리드 컬럼 수 동적 계산
+    const gridCols = useMemo(() => {
+        const presetCount = sortedPresets.length;
+        if (presetCount <= 3) return 'grid-cols-3';
+        if (presetCount <= 4) return 'grid-cols-2 md:grid-cols-4';
+        if (presetCount <= 6) return 'grid-cols-2 md:grid-cols-3';
+        return 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
+    }, [sortedPresets.length]);
 
     // 모달이 열릴 때 현재 값으로 초기화
     useEffect(() => {
         if (isOpen) {
             setInputValue(currentValue || '');
-            setShowPresets(false);
-            // 다음 틱에서 포커스 설정 (모달 애니메이션 완료 후)
             setTimeout(() => {
                 inputRef.current?.focus();
                 inputRef.current?.select();
@@ -55,7 +112,7 @@ const CellEditModal = ({
 
         if (isOpen) {
             document.addEventListener('keydown', handleEscape);
-            document.body.style.overflow = 'hidden'; // 배경 스크롤 방지
+            document.body.style.overflow = 'hidden';
         }
 
         return () => {
@@ -77,9 +134,7 @@ const CellEditModal = ({
 
         try {
             await onSave(inputValue);
-            // 성공 시 모달은 부모 컴포넌트에서 닫을 것임
         } catch (err) {
-            // 에러는 부모 컴포넌트에서 처리
             console.error('저장 실패:', err);
         }
     }, [inputValue, onSave, loading]);
@@ -95,7 +150,6 @@ const CellEditModal = ({
     // 프리셋 선택
     const handlePresetSelect = useCallback((value) => {
         setInputValue(value);
-        setShowPresets(false);
         inputRef.current?.focus();
     }, []);
 
@@ -114,7 +168,7 @@ const CellEditModal = ({
     return (
         <div
             ref={modalRef}
-            className="fixed inset-0 bg-black/50  flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
             onClick={handleBackgroundClick}
         >
             <div className="bg-white rounded-lg shadow-sm max-w-md w-full max-h-[90vh] overflow-auto">
@@ -178,7 +232,7 @@ const CellEditModal = ({
                                 value={inputValue}
                                 onChange={handleInputChange}
                                 onKeyDown={handleKeyDown}
-                                placeholder="출석 상태를 입력하세요 (O, X, 또는 기타)"
+                                placeholder="출석 상태를 입력하세요"
                                 disabled={loading}
                                 className="
                                     w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
@@ -187,45 +241,40 @@ const CellEditModal = ({
                                     text-center text-lg
                                 "
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPresets(!showPresets)}
-                                disabled={loading}
-                                className="
-                                    absolute right-2 top-1/2 transform -translate-y-1/2
-                                    text-gray-500 hover:text-gray-700 disabled:opacity-50
-                                "
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
                         </div>
 
-                        {/* 프리셋 버튼들 */}
-                        {showPresets && (
-                            <div className="mt-2 space-y-2">
-                                <div className="text-xs text-gray-500 mb-2">빠른 선택</div>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {attendancePresets.map((preset) => (
-                                        <button
-                                            key={preset.value}
-                                            type="button"
-                                            onClick={() => handlePresetSelect(preset.value)}
-                                            disabled={loading}
-                                            className={`
-                                                px-3 py-2 rounded-md text-sm font-medium border border-gray-300 transition-colors
-                                                ${preset.bgColor} ${preset.color}
-                                                disabled:opacity-50 disabled:cursor-not-allowed
-                                            `}
-                                        >
-                                            <div className="font-bold">{preset.value || '-'}</div>
-                                            <div className="text-xs">{preset.label}</div>
-                                        </button>
-                                    ))}
-                                </div>
+                        {/* 빠른 선택 버튼들 (항상 표시) */}
+                        <div className="mt-3 space-y-2">
+                            <div className="text-xs text-gray-500 mb-2">빠른 선택</div>
+                            <div className={`grid ${gridCols} gap-2`}>
+                                {sortedPresets.map((preset) => (
+                                    <button
+                                        key={preset.value || 'empty'}
+                                        type="button"
+                                        onClick={() => handlePresetSelect(preset.value)}
+                                        disabled={loading}
+                                        className={`
+                                            px-3 py-2 rounded-md text-sm font-medium border transition-colors
+                                            ${preset.style.bgClassName} ${preset.style.borderClassName} ${preset.style.hoverClassName}
+                                            disabled:opacity-50 disabled:cursor-not-allowed
+                                            flex flex-col items-center space-y-1
+                                        `}
+                                    >
+                                        <div className={`text-lg ${preset.style.className}`}>
+                                            {preset.icon || preset.shortName || '-'}
+                                        </div>
+                                        <div className="text-xs text-gray-600 leading-tight text-center">
+                                            {preset.label}
+                                        </div>
+                                        {preset.isAttendance && (
+                                            <div className="text-xs bg-green-100 text-green-600 px-1 rounded">
+                                                출석
+                                            </div>
+                                        )}
+                                    </button>
+                                ))}
                             </div>
-                        )}
+                        </div>
                     </div>
 
                     {/* 에러 메시지 */}
@@ -243,16 +292,6 @@ const CellEditModal = ({
                         </div>
                     )}
 
-                    {/* 도움말 */}
-                    <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-md">
-                        <div className="font-medium mb-1">입력 가이드</div>
-                        <ul className="space-y-1">
-                            <li>• <strong>O</strong>: 출석 (녹색 표시)</li>
-                            <li>• <strong>X</strong>: 결석 (빨간색 표시)</li>
-                            <li>• <strong>빈 값</strong>: 미기록 (회색 - 표시)</li>
-                            <li>• <strong>기타 텍스트</strong>: 특별 상태 (녹색 표시)</li>
-                        </ul>
-                    </div>
                 </div>
 
                 {/* 모달 푸터 */}

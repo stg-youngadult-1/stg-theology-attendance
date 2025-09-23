@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { getAttendanceStyle, getAttendanceTooltip, ATTENDANCE_CONFIG } from '../../utils/attendanceStatus.js';
 import SheetsTableSkeleton from "./SheetsTableSkeleton.jsx";
 import SheetsTableWithNoData from "./SheetsTableWithNoData.jsx";
 
@@ -13,44 +14,7 @@ const formatDate = (date) => {
 };
 
 /**
- * 출석 상태에 따른 스타일 반환
- * @param {string} status - 출석 상태 ('O', 'X', 'None', 'Etc')
- * @returns {Object} 스타일 객체
- */
-const getAttendanceStyle = (status) => {
-    switch (status) {
-        case 'O':
-            return {
-                className: 'text-green-600 font-semibold',
-                content: 'O'
-            };
-        case 'X':
-            return {
-                className: 'text-red-600 font-semibold',
-                content: 'X'
-            };
-        case 'Etc':
-            return {
-                className: 'text-green-600 font-medium',
-                content: null // desc 내용을 표시
-            };
-        case 'None':
-        default:
-            return {
-                className: 'text-gray-400',
-                content: '-'
-            };
-    }
-};
-
-/**
  * 스프레드시트 테이블 컴포넌트
- * @param {Object} props
- * @param {Object} props.data - 스프레드시트 데이터
- * @param {boolean} props.loading - 로딩 상태
- * @param {Function} props.onCellClick - 셀 클릭 콜백 (rowIndex, colIndex, currentValue, cellInfo)
- * @param {boolean} props.cellUpdateLoading - 셀 업데이트 로딩 상태
- * @param {string} props.className - 추가 CSS 클래스
  */
 const SheetsTable = ({
                          data,
@@ -69,7 +33,7 @@ const SheetsTable = ({
 
         let filtered = data.dataRows;
 
-        // 검색 필터링 - 사용자 이름과 반 정보로 검색
+        // 검색 필터링
         if (searchTerm) {
             filtered = filtered.filter(row => {
                 const name = row.user?.name || '';
@@ -81,7 +45,7 @@ const SheetsTable = ({
             });
         }
 
-        // 정렬 - 이름 기준으로만 정렬
+        // 정렬
         if (sortConfig.key === 'name') {
             filtered = [...filtered].sort((a, b) => {
                 const aName = a.user?.name || '';
@@ -96,22 +60,17 @@ const SheetsTable = ({
         return filtered;
     }, [data?.dataRows, searchTerm, sortConfig]);
 
-    // 정렬 핸들러 - 이름 열만 정렬 가능
+    // 핸들러 함수들
     const handleSort = (key) => {
         if (key !== 'name') return;
-
         setSortConfig(prevConfig => ({
             key: key,
-            direction: prevConfig.key === key && prevConfig.direction === 'asc'
-                ? 'desc'
-                : 'asc'
+            direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
         }));
     };
 
-    // 정렬 아이콘 렌더링
     const getSortIcon = (key) => {
         if (key !== 'name') return null;
-
         if (sortConfig.key !== key) {
             return <span className="text-gray-500">⇅</span>;
         }
@@ -120,23 +79,19 @@ const SheetsTable = ({
             : <span className="text-blue-600">↓</span>;
     };
 
-    // 셀 클릭 핸들러
     const handleCellClick = useCallback((rowIndex, colIndex, attendance) => {
         if (!onCellClick) return;
 
-        // 현재 값 계산
         const currentValue = attendance?.status === 'Etc'
             ? attendance.desc
             : attendance?.status === 'None'
                 ? ''
                 : (attendance?.status || '');
 
-        // 원본 데이터에서의 실제 행 인덱스 찾기
         const originalRowIndex = data.dataRows.findIndex(row =>
             row.user?.name === processedData[rowIndex]?.user?.name
         );
 
-        // 셀 정보 구성
         const cellInfo = {
             userName: processedData[rowIndex]?.user?.name,
             userClass: processedData[rowIndex]?.user?.class,
@@ -147,7 +102,6 @@ const SheetsTable = ({
         onCellClick(originalRowIndex, colIndex, currentValue, cellInfo);
     }, [onCellClick, data, processedData]);
 
-    // 셀 호버 핸들러
     const handleCellMouseEnter = useCallback((rowIndex, colIndex) => {
         setHoveredCell({ rowIndex, colIndex });
     }, []);
@@ -156,19 +110,17 @@ const SheetsTable = ({
         setHoveredCell(null);
     }, []);
 
-    // 셀이 편집 가능한지 확인
     const isCellHovered = useCallback((rowIndex, colIndex) => {
         return hoveredCell?.rowIndex === rowIndex && hoveredCell?.colIndex === colIndex;
     }, [hoveredCell]);
 
-    // 로딩 상태
+    // 로딩 및 빈 데이터 처리
     if (loading) {
-        return <SheetsTableSkeleton className/>;
+        return <SheetsTableSkeleton className={className} />;
     }
 
-    // 데이터가 없는 경우
     if (!data || !data.hasData || !data.headers || data.headers.length === 0) {
-        return <SheetsTableWithNoData className/>;
+        return <SheetsTableWithNoData className={className} />;
     }
 
     return (
@@ -184,7 +136,6 @@ const SheetsTable = ({
                         )}
                     </h3>
 
-                    {/* 검색 입력 */}
                     <div className="flex items-center space-x-4">
                         <div className="relative">
                             <input
@@ -192,17 +143,12 @@ const SheetsTable = ({
                                 placeholder="이름 또는 반 검색..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="
-                                    pl-8 pr-4 py-2 border border-gray-300 rounded-md shadow-sm
-                                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                                    text-sm w-64
-                                "
+                                className="pl-8 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-64"
                                 disabled={cellUpdateLoading}
                             />
                             <span className="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
                         </div>
 
-                        {/* 결과 카운트 */}
                         <div className="text-sm text-gray-600">
                             {searchTerm
                                 ? `${processedData.length}개 검색 결과`
@@ -219,14 +165,9 @@ const SheetsTable = ({
                     {/* 테이블 헤더 */}
                     <thead className="bg-gray-50">
                     <tr>
-                        {/* 이름 열 */}
                         <th
                             onClick={() => handleSort('name')}
-                            className="
-                                px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
-                                cursor-pointer hover:bg-gray-100 transition-colors select-none
-                                border-r border-gray-200
-                            "
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none border-r border-gray-200"
                         >
                             <div className="flex items-center space-x-2">
                                 <span>이름</span>
@@ -234,28 +175,20 @@ const SheetsTable = ({
                             </div>
                         </th>
 
-                        {/* 반 열 */}
-                        <th className="
-                            px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
-                            border-r border-gray-200
-                        ">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
                             반
                         </th>
 
-                        {/* 출석 열들 */}
                         {data.headers.map((header, index) => (
                             <th
                                 key={index}
-                                className="
-                                    px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider
-                                    border-r border-gray-200 last:border-r-0 min-w-[80px]
-                                "
+                                className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 last:border-r-0 min-w-[90px]"
                             >
                                 <div className="flex flex-col items-center space-y-1">
                                     <span>{header.lecture}</span>
                                     <span className="text-xs text-gray-400 font-normal">
-                                        {formatDate(header.date)}
-                                    </span>
+                                            {formatDate(header.date)}
+                                        </span>
                                 </div>
                             </th>
                         ))}
@@ -266,10 +199,7 @@ const SheetsTable = ({
                     <tbody className="bg-white divide-y divide-gray-200">
                     {processedData.length === 0 ? (
                         <tr>
-                            <td
-                                colSpan={data.headers.length + 2}
-                                className="px-6 py-8 text-center text-gray-500"
-                            >
+                            <td colSpan={data.headers.length + 2} className="px-6 py-8 text-center text-gray-500">
                                 {searchTerm ? (
                                     <div>
                                         <div className="text-2xl mb-2">🔍</div>
@@ -286,32 +216,26 @@ const SheetsTable = ({
                         </tr>
                     ) : (
                         processedData.map((row, rowIndex) => (
-                            <tr
-                                key={rowIndex}
-                                className="hover:bg-gray-50 transition-colors"
-                            >
+                            <tr key={rowIndex} className="hover:bg-gray-50 transition-colors">
                                 {/* 이름 셀 */}
-                                <td className="
-                                    px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900
-                                    border-r border-gray-100
-                                ">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-100">
                                     {row.user?.name || '-'}
                                 </td>
 
                                 {/* 반 셀 */}
-                                <td className="
-                                    px-6 py-4 whitespace-nowrap text-sm text-gray-500
-                                    border-r border-gray-100
-                                ">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r border-gray-100">
                                     {row.user?.class || '-'}
                                 </td>
 
-                                {/* 출석 정보 셀들 */}
+                                {/* 출석 정보 셀들 - displayShortName으로 텍스트 표시 */}
                                 {row.attendance?.map((attendance, colIndex) => {
                                         const style = getAttendanceStyle(attendance.status);
-                                        const displayContent = style.content !== null
-                                            ? style.content
-                                            : attendance.desc;
+                                        const config = ATTENDANCE_CONFIG[attendance.status];
+
+                                        // displayShortName을 우선 표시, 없으면 desc, 그것도 없으면 기본값
+                                        const displayContent = (config?.shortName === 'Etc') ?
+                                            (attendance.desc || '기타') :
+                                            (config?.displayShortName || attendance.desc || '-');
 
                                         const isHovered = isCellHovered(rowIndex, colIndex);
                                         const isClickable = !cellUpdateLoading;
@@ -319,30 +243,27 @@ const SheetsTable = ({
                                         return (
                                             <td
                                                 key={colIndex}
-                                                className="
-                                                    px-4 py-4 whitespace-nowrap text-sm text-center
-                                                    border-r border-gray-100 last:border-r-0 relative
-                                                "
+                                                className="px-4 py-4 whitespace-nowrap text-sm text-center border-r border-gray-100 last:border-r-0 relative"
                                             >
                                                 <div
                                                     className={`
                                                         ${style.className} 
-                                                        max-w-[60px] truncate mx-auto
+                                                        max-w-[80px] truncate mx-auto
                                                         ${isClickable ? 'cursor-pointer' : 'cursor-not-allowed'}
-                                                        ${isHovered && isClickable ? 'bg-blue-50 rounded px-2 py-1' : ''}
+                                                        ${isHovered && isClickable ? `${style.bgClassName} rounded px-2 py-1` : ''}
                                                         ${cellUpdateLoading ? 'opacity-50' : ''}
                                                         transition-all duration-150
                                                     `}
                                                     title={
                                                         isClickable
-                                                            ? `클릭하여 편집 (${attendance.status === 'Etc' ? attendance.desc : attendance.status})`
+                                                            ? getAttendanceTooltip(attendance)
                                                             : '저장 중...'
                                                     }
                                                     onClick={() => isClickable && handleCellClick(rowIndex, colIndex, attendance)}
                                                     onMouseEnter={() => isClickable && handleCellMouseEnter(rowIndex, colIndex)}
                                                     onMouseLeave={() => isClickable && handleCellMouseLeave()}
                                                 >
-                                                    {displayContent || '-'}
+                                                    {displayContent}
                                                 </div>
 
                                                 {/* 편집 가능 표시 */}
@@ -358,10 +279,7 @@ const SheetsTable = ({
                                     data.headers.map((_, colIndex) => (
                                         <td
                                             key={colIndex}
-                                            className="
-                                                px-4 py-4 whitespace-nowrap text-sm text-center text-gray-400
-                                                border-r border-gray-100 last:border-r-0
-                                            "
+                                            className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-400 border-r border-gray-100 last:border-r-0"
                                         >
                                             <div
                                                 className="cursor-pointer hover:bg-blue-50 rounded px-2 py-1 transition-all duration-150"
