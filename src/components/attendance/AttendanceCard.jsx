@@ -51,6 +51,43 @@ const canMarkAttendance = (header, attendanceItem) => {
 };
 
 /**
+ * 오늘의 출석 상태를 확인
+ * @param {Array} headers - 강의 헤더 정보
+ * @param {Array} attendance - 출석 정보 배열
+ * @returns {Object} 오늘의 출석 상태 정보
+ */
+const getTodayAttendanceStatus = (headers, attendance) => {
+    // 오늘 날짜에 해당하는 강의 찾기
+    const todayLectureIndex = headers.findIndex(header => isSameDate(header.date));
+
+    if (todayLectureIndex === -1) {
+        return {
+            hasTodayLecture: false,
+            isCompleted: false,
+            lectureIndex: -1,
+            header: null
+        };
+    }
+
+    const todayHeader = headers[todayLectureIndex];
+    const todayAttendance = attendance[todayLectureIndex];
+
+    // 출석이 완료되었는지 확인
+    const isCompleted = todayAttendance &&
+        todayAttendance.status &&
+        todayAttendance.status !== ATTENDANCE_STATUS.NONE &&
+        todayAttendance.status.trim() !== '';
+
+    return {
+        hasTodayLecture: true,
+        isCompleted,
+        lectureIndex: todayLectureIndex,
+        header: todayHeader,
+        attendance: todayAttendance
+    };
+};
+
+/**
  * 출석 확인 팝업 컴포넌트
  */
 const AttendanceConfirmModal = ({ isOpen, studentName, onConfirm, onCancel, loading }) => {
@@ -96,6 +133,96 @@ const AttendanceConfirmModal = ({ isOpen, studentName, onConfirm, onCancel, load
 };
 
 /**
+ * 출석 체크 헤더 컴포넌트
+ */
+const AttendanceCheckHeader = ({
+                                   student,
+                                   todayStatus,
+                                   onAttendanceClick,
+                                   cellUpdateLoading
+                               }) => {
+    const { hasTodayLecture, isCompleted, header, attendance } = todayStatus;
+
+    // 상태에 따른 버튼/메시지 렌더링
+    const renderContent = () => {
+        if (!hasTodayLecture) {
+            // 오늘 강의가 없는 경우
+            return (
+                <div className="flex items-center justify-center py-3 px-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex items-center text-gray-600">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm font-medium">지금은 출석 기간이 아닙니다</span>
+                    </div>
+                </div>
+            );
+        }
+
+        if (isCompleted) {
+            // 출석 완료된 경우
+            const style = getAttendanceStyle(attendance.status);
+            return (
+                <div className="flex items-center justify-center py-3 px-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center text-green-700">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm font-medium">오늘 출석 완료</span>
+                        <div className={`ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs ${style.className}`}>
+                            <span className="mr-1">{style.icon}</span>
+                            <span>{style.label}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // 출석 가능한 경우
+        return (
+            <div className="flex items-center justify-between py-3 px-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center text-blue-700">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <div>
+                        <div className="text-sm font-medium">{header.lecture}</div>
+                        <div className="text-xs text-blue-600">{formatDate(header.date)}</div>
+                    </div>
+                </div>
+                <button
+                    onClick={() => onAttendanceClick(todayStatus.lectureIndex)}
+                    disabled={cellUpdateLoading}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400
+                             text-white text-sm font-medium rounded-lg transition-colors
+                             disabled:cursor-not-allowed flex items-center"
+                >
+                    {cellUpdateLoading ? (
+                        <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            처리 중...
+                        </>
+                    ) : (
+                        <>
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            출석 체크
+                        </>
+                    )}
+                </button>
+            </div>
+        );
+    };
+
+    return (
+        <div className="mb-4">
+            {renderContent()}
+        </div>
+    );
+};
+
+/**
  * 개별 학생의 출석 정보를 표시하는 카드 컴포넌트
  * @param {Object} props
  * @param {Object} props.student - 학생 정보 {name, class}
@@ -122,6 +249,11 @@ const AttendanceCard = ({
         isOpen: false,
         lectureIndex: -1
     });
+
+    // 오늘의 출석 상태 확인
+    const todayStatus = useMemo(() => {
+        return getTodayAttendanceStatus(headers, attendance);
+    }, [headers, attendance]);
 
     // 출석 통계 계산 - 새로운 calculateAttendanceStats 함수 사용
     const attendanceStats = useMemo(() => {
@@ -216,6 +348,16 @@ const AttendanceCard = ({
     return (
         <>
             <div className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden ${loading ? 'opacity-75' : ''} ${className}`}>
+                {/* 출석 체크 헤더 */}
+                <div className="p-4 border-b border-gray-100">
+                    <AttendanceCheckHeader
+                        student={student}
+                        todayStatus={todayStatus}
+                        onAttendanceClick={handleAttendanceClick}
+                        cellUpdateLoading={cellUpdateLoading}
+                    />
+                </div>
+
                 {/* 학생 정보 헤더 */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
@@ -236,7 +378,6 @@ const AttendanceCard = ({
                         </div>
                     </div>
                 </div>
-
 
                 {/* 전체 출석 현황 (오름차순 정렬) */}
                 {allAttendance.length > 0 && (
