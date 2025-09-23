@@ -3,13 +3,13 @@
 // Google Sheets 관련 설정
 export const SHEETS_CONFIG = {
     // 스프레드시트 ID
-    spreadsheetId: '1kZMbJmTjNV08yEX0fBc2XOU3w_3B0zPKhjU_4ar7nCQ',
+    spreadsheetId: '1-gUVumU_3rU82Y1tY9cX9PUe10zJsMlDmw6chxc03nY',
 
     // 시트명
     sheetName: '출석부 웹페이지 DB',
 
     // 데이터 범위
-    range: 'A1:P165',
+    range: 'A1:P500',
 
     // API 관련 설정
     api: {

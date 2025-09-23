@@ -44,6 +44,7 @@ const SheetsViewer = ({ options = {}, className = '' }) => {
             setIsModalOpen(false);
             setSelectedCell(null);
             setModalError(null);
+            refetch();
         },
         onCellUpdateError: (errorInfo) => {
             console.error('셀 업데이트 실패:', errorInfo);
