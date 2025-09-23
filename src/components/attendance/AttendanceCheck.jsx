@@ -1,4 +1,4 @@
-import React, {useState, useMemo, useRef, useEffect} from 'react';
+import React, {useState, useMemo, useRef, useEffect, useCallback} from 'react';
 import {useGoogleSheets} from '../../hooks/useGoogleSheets';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
@@ -21,7 +21,11 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
     const searchInputRef = useRef(null);
     const dropdownRef = useRef(null);
 
-    // Google Sheets 훅 사용
+    // 성공/에러 메시지 상태 추가
+    const [successMessage, setSuccessMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+
+    // Google Sheets 훅 사용 - cellUpdateLoading 추가
     const {
         data,
         loading,
@@ -32,7 +36,9 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
         hasData,
         refetch,
         isAuthenticated,
-        config
+        config,
+        updateCell,           // 추가
+        cellUpdateLoading     // 추가
     } = useGoogleSheets(options);
 
     // 검색 제안 목록 생성
@@ -164,6 +170,35 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
         }
     };
 
+    // 출석 업데이트 핸들러 추가
+    const handleAttendanceUpdate = useCallback(async (rowIndex, colIndex, newValue) => {
+        try {
+            setErrorMessage('');
+            setSuccessMessage('');
+
+            await updateCell(rowIndex, colIndex, newValue);
+
+            // 성공 메시지 표시
+            const studentName = data?.dataRows?.[rowIndex]?.user?.name || '학생';
+            setSuccessMessage(`${studentName}의 출석이 완료되었습니다.`);
+
+            // 3초 후 메시지 자동 삭제
+            setTimeout(() => setSuccessMessage(''), 3000);
+
+        } catch (error) {
+            console.error('출석 처리 실패:', error);
+            setErrorMessage(`출석 처리 실패: ${error.message}`);
+
+            // 5초 후 에러 메시지 자동 삭제
+            setTimeout(() => setErrorMessage(''), 5000);
+        }
+    }, [updateCell, data]);
+
+    // 메시지 닫기 핸들러들
+    const handleCloseSuccessMessage = () => setSuccessMessage('');
+    const handleCloseErrorMessage = () => setErrorMessage('');
+
+
     // 외부 클릭 감지
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -233,10 +268,10 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                             onChange={(e) => handleSearchChange(e.target.value)}
                             onKeyDown={handleKeyDown}
                             className="
-                                w-full pl-12 pr-12 py-3 text-lg border border-gray-300 rounded-lg shadow-sm
-                                focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                                placeholder-gray-400 transition-all duration-200
-                            "
+                            w-full pl-12 pr-12 py-3 text-lg border border-gray-300 rounded-lg shadow-sm
+                            focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                            placeholder-gray-400 transition-all duration-200
+                        "
                             disabled={loading}
                             autoComplete="off"
                         />
@@ -255,9 +290,9 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                             <button
                                 onClick={handleClearSearch}
                                 className="
-                                    absolute right-3 top-1/2 transform -translate-y-1/2
-                                    p-1 text-gray-400 hover:text-gray-600 transition-colors
-                                "
+                                absolute right-3 top-1/2 transform -translate-y-1/2
+                                p-1 text-gray-400 hover:text-gray-600 transition-colors
+                            "
                                 disabled={loading}
                                 aria-label="검색어 지우기"
                             >
@@ -280,10 +315,10 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                                     key={`${student.user?.name}-${student.originalIndex}`}
                                     onClick={() => handleSelectStudent(student)}
                                     className={`
-                                        w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors
-                                        ${index === highlightedIndex ? 'bg-blue-50' : ''}
-                                        ${index === suggestions.length - 1 ? '' : 'border-b border-gray-100'}
-                                    `}
+                                    w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors
+                                    ${index === highlightedIndex ? 'bg-blue-50' : ''}
+                                    ${index === suggestions.length - 1 ? '' : 'border-b border-gray-100'}
+                                `}
                                 >
                                     <div className="font-medium text-gray-900">
                                         {student.user?.name || '이름 없음'}
@@ -306,9 +341,9 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                                     <span className="text-green-600 font-medium">1명 선택됨</span>
                                 ) : (
                                     <span>
-                                        <span className="font-medium text-blue-600">{suggestions.length}명</span>
-                                        <span className="text-gray-400 mx-1"> 검색됨</span>
-                                    </span>
+                                    <span className="font-medium text-blue-600">{suggestions.length}명</span>
+                                    <span className="text-gray-400 mx-1"> 검색됨</span>
+                                </span>
                                 )
                             ) : (
                                 <span>전체 <span className="font-medium">{dataRowCount}명</span></span>
@@ -331,9 +366,9 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                         onClick={refetch}
                         disabled={loading}
                         className="
-                            p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50
-                            rounded-lg transition-colors disabled:opacity-50
-                        "
+                        p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50
+                        rounded-lg transition-colors disabled:opacity-50
+                    "
                         title="데이터 새로고침"
                         aria-label="데이터 새로고침"
                     >
@@ -353,6 +388,43 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                     </button>
                 </div>
             </div>
+
+            {/* 성공/에러 메시지 표시 영역 */}
+            {(successMessage || errorMessage) && (
+                <div className="mb-4 space-y-2">
+                    {/* 성공 메시지 */}
+                    {successMessage && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
+                            <div className="flex items-center">
+                                <div className="text-green-500 mr-2">✓</div>
+                                <span className="text-green-700 font-medium">{successMessage}</span>
+                            </div>
+                            <button
+                                onClick={handleCloseSuccessMessage}
+                                className="text-green-500 hover:text-green-700"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
+
+                    {/* 에러 메시지 */}
+                    {errorMessage && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
+                            <div className="flex items-center">
+                                <div className="text-red-500 mr-2">⚠</div>
+                                <span className="text-red-700 font-medium">{errorMessage}</span>
+                            </div>
+                            <button
+                                onClick={handleCloseErrorMessage}
+                                className="text-red-500 hover:text-red-700"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* 메인 컨텐츠 */}
             {!hasData ? (
@@ -428,6 +500,9 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                         attendance={selectedStudent.attendance}
                         headers={data.headers}
                         loading={loading}
+                        onAttendanceUpdate={handleAttendanceUpdate}
+                        studentRowIndex={selectedStudent.originalIndex}
+                        cellUpdateLoading={cellUpdateLoading}
                     />
                 </div>
             )}
@@ -438,21 +513,20 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                     <div>총 {totalRows}행의 데이터
                         {selectedStudent && (
                             <span>
-                                - {selectedStudent.user?.name} ({selectedStudent.user?.class}) 출석 정보
-                            </span>
+                            - {selectedStudent.user?.name} ({selectedStudent.user?.class}) 출석 정보
+                        </span>
                         )}
                     </div>
                 </div>
             )}
-
 
             {/* 실시간 상태 표시 */}
             <div className="flex items-center justify-center gap-4 mt-1">
                 <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-green-400' : 'bg-red-400'}`}></div>
                     <span className="text-sm text-gray-600">
-                            {isAuthenticated ? '연결됨' : '연결 안됨'}
-                        </span>
+                    {isAuthenticated ? '연결됨' : '연결 안됨'}
+                </span>
                 </div>
 
                 {loading && (
