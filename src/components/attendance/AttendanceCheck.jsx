@@ -3,6 +3,11 @@ import {useGoogleSheets} from '../../hooks/useGoogleSheets';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import AttendanceCard from './AttendanceCard';
+// 새로운 출석 상태 모듈 import
+import {
+    ATTENDANCE_STATUS,
+    isAttendanceStatus
+} from '../../utils/attendanceStatus.js';
 
 /**
  * 모바일용 출석체크 메인 컨테이너 컴포넌트
@@ -80,34 +85,43 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
         }
     }, [suggestions, searchTerm]);
 
-    // 선택된 학생의 출석 통계 계산
+    // 선택된 학생의 출석 통계 계산 - 새로운 시스템 적용
     const attendanceStats = useMemo(() => {
         if (!selectedStudent || !data?.headers) return null;
 
         const attendance = selectedStudent.attendance || [];
         const totalLectures = data.headers.length;
+
+        // 상세 통계 계산
         let totalAttended = 0;
         let totalAbsent = 0;
         let totalEtc = 0;
         let totalNone = 0;
 
         attendance.forEach(att => {
-            if (att.status === 'O') totalAttended++;
-            else if (att.status === 'X') totalAbsent++;
-            else if (att.status === 'Etc') totalEtc++;
-            else totalNone++;
+            if (!att || !att.status || att.status === ATTENDANCE_STATUS.NONE) {
+                totalNone++;
+            } else if (att.status === ATTENDANCE_STATUS.ABSENT) {
+                totalAbsent++;
+            } else if (isAttendanceStatus(att.status)) {
+                totalAttended++;
+            } else {
+                totalEtc++;
+            }
         });
 
+        // 출석률 계산 (실제 기록된 강의 중에서)
         const recordedLectures = totalAttended + totalAbsent + totalEtc;
-        const attendanceRate = recordedLectures > 0 ? (totalAttended / recordedLectures * 100) : 0;
+        const attendanceRate = recordedLectures > 0 ?
+            Math.round((totalAttended / recordedLectures) * 100 * 10) / 10 : 0;
 
         return {
             totalLectures,
+            attendanceRate,
             totalAttended,
             totalAbsent,
             totalEtc,
-            totalNone,
-            attendanceRate: Math.round(attendanceRate * 10) / 10
+            totalNone
         };
     }, [selectedStudent, data?.headers]);
 
@@ -170,7 +184,7 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
         }
     };
 
-
+    // 출석 업데이트 핸들러 - 출석(O)만 저장하도록 수정
     const handleAttendanceUpdate = useCallback(async (rowIndex, colIndex, newValue) => {
         try {
             setErrorMessage('');
@@ -183,10 +197,10 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                 const targetRow = { ...updatedDataRows[selectedStudent.originalIndex] };
                 const updatedAttendance = [...(targetRow.attendance || [])];
 
-                // 새로운 출석 상태로 업데이트
+                // 새로운 출석 상태로 업데이트 - 출석만 저장
                 updatedAttendance[colIndex] = {
-                    status: newValue === 'O' ? 'O' : newValue === 'X' ? 'X' : newValue ? 'Etc' : 'None',
-                    desc: newValue === 'O' || newValue === 'X' ? '' : newValue || ''
+                    status: newValue === ATTENDANCE_STATUS.PRESENT ? ATTENDANCE_STATUS.PRESENT : ATTENDANCE_STATUS.NONE,
+                    desc: ''
                 };
 
                 targetRow.attendance = updatedAttendance;
@@ -212,7 +226,7 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                 refetch(); // showLoading: false로 백그라운드 업데이트
             }, 500);
 
-            // 5초 후 메시지 자동 삭제
+            // 3초 후 메시지 자동 삭제
             setTimeout(() => setSuccessMessage(''), 3000);
 
         } catch (error) {
@@ -236,11 +250,9 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
         }
     }, [updateCell, selectedStudent, data]);
 
-
     // 메시지 닫기 핸들러들
     const handleCloseSuccessMessage = () => setSuccessMessage('');
     const handleCloseErrorMessage = () => setErrorMessage('');
-
 
     // 외부 클릭 감지
     useEffect(() => {
@@ -513,7 +525,7 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                             <h3 className="text-lg font-medium text-gray-900 mb-3">
                                 {selectedStudent.user?.name}님의 출석 현황
                             </h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-4 md:grid-cols-4 gap-4">
                                 <div className="text-center">
                                     <div
                                         className="text-2xl font-bold text-green-600">{attendanceStats.attendanceRate}%

@@ -1,4 +1,11 @@
 import React, { useMemo, useState } from 'react';
+import {
+    calculateAttendanceStats,
+    getAttendanceStyle,
+    ATTENDANCE_STATUS,
+    ATTENDANCE_CONFIG,
+    isAttendanceStatus
+} from '../../utils/attendanceStatus.js';
 
 /**
  * 날짜를 "9/10" 형식으로 포맷팅
@@ -8,42 +15,6 @@ import React, { useMemo, useState } from 'react';
 const formatDate = (date) => {
     if (!date || !(date instanceof Date)) return '';
     return `${date.getMonth() + 1}/${date.getDate()}`;
-};
-
-/**
- * 출석 상태에 따른 스타일 반환
- * @param {string} status - 출석 상태 ('O', 'X', 'None', 'Etc')
- * @returns {Object} 스타일 객체
- */
-const getAttendanceStyle = (status) => {
-    switch (status) {
-        case 'O':
-            return {
-                className: 'bg-green-100 text-green-700 border-green-200',
-                icon: '✓',
-                label: '출석'
-            };
-        case 'X':
-            return {
-                className: 'bg-red-100 text-red-700 border-red-200',
-                icon: '✗',
-                label: '결석'
-            };
-        case 'Etc':
-            return {
-                className: 'bg-orange-100 text-orange-700 border-orange-200',
-                icon: '!',
-                label: '기타'
-            };
-        case 'None':
-        case '-':
-        default:
-            return {
-                className: 'bg-gray-100 text-gray-500 border-gray-200',
-                icon: '-',
-                label: '미기록'
-            };
-    }
 };
 
 /**
@@ -70,10 +41,9 @@ const canMarkAttendance = (header, attendanceItem) => {
         return false;
     }
 
-    // 미기록 상태인지 확인
+    // 미기록 상태인지 확인 (새로운 출석 시스템 적용)
     const isUnrecorded = !attendanceItem ||
-        attendanceItem.status === 'None' ||
-        attendanceItem.status === '-' ||
+        attendanceItem.status === ATTENDANCE_STATUS.NONE ||
         !attendanceItem.status ||
         attendanceItem.status.trim() === '';
 
@@ -153,7 +123,7 @@ const AttendanceCard = ({
         lectureIndex: -1
     });
 
-    // 출석 통계 계산
+    // 출석 통계 계산 - 새로운 calculateAttendanceStats 함수 사용
     const attendanceStats = useMemo(() => {
         if (!attendance || attendance.length === 0) {
             return {
@@ -162,44 +132,39 @@ const AttendanceCard = ({
                 absent: 0,
                 etc: 0,
                 none: headers.length,
-                attendanceRate: 0
+                rate: 0
             };
         }
 
-        const stats = {
-            totalLectures: headers.length,
-            attended: 0,
-            absent: 0,
-            etc: 0,
-            none: 0
-        };
+        // 새로운 출석 통계 계산 함수 사용
+        const stats = calculateAttendanceStats(attendance);
+
+        // 상세 통계 계산
+        let attendedCount = 0;
+        let absentCount = 0;
+        let etcCount = 0;
+        let noneCount = 0;
 
         attendance.forEach(att => {
-            switch (att.status) {
-                case 'O':
-                    stats.attended++;
-                    break;
-                case 'X':
-                    stats.absent++;
-                    break;
-                case 'Etc':
-                    stats.etc++;
-                    break;
-                case 'None':
-                case '-':
-                default:
-                    stats.none++;
-                    break;
+            if (!att || !att.status || att.status === ATTENDANCE_STATUS.NONE) {
+                noneCount++;
+            } else if (att.status === ATTENDANCE_STATUS.ABSENT) {
+                absentCount++;
+            } else if (isAttendanceStatus(att.status)) {
+                attendedCount++;
+            } else {
+                etcCount++;
             }
         });
 
-        // 미기록을 제외한 출석률 계산
-        const recordedLectures = stats.attended + stats.absent + stats.etc;
-        stats.attendanceRate = recordedLectures > 0
-            ? Math.round((stats.attended / recordedLectures) * 100)
-            : 0;
-
-        return stats;
+        return {
+            totalLectures: headers.length,
+            attended: attendedCount,
+            absent: absentCount,
+            etc: etcCount,
+            none: noneCount,
+            rate: stats.rate
+        };
     }, [attendance, headers.length]);
 
     // 전체 출석 현황 (오름차순 정렬)
@@ -208,7 +173,7 @@ const AttendanceCard = ({
 
         return headers.map((header, index) => ({
             header,
-            attendance: attendance[index] || { status: 'None', desc: '' },
+            attendance: attendance[index] || { status: ATTENDANCE_STATUS.NONE, desc: '' },
             index,
             canMark: canMarkAttendance(header, attendance[index])
         })).sort((a, b) => {
@@ -217,12 +182,13 @@ const AttendanceCard = ({
         });
     }, [attendance, headers]);
 
-    // 출석 확인 처리
+    // 출석 확인 처리 - 출석(O)만 체크 가능
     const handleAttendanceConfirm = async () => {
         if (!onAttendanceUpdate || confirmModal.lectureIndex < 0) return;
 
         try {
-            await onAttendanceUpdate(studentRowIndex, confirmModal.lectureIndex, 'O');
+            // 출석 상태(PRESENT)만 저장
+            await onAttendanceUpdate(studentRowIndex, confirmModal.lectureIndex, ATTENDANCE_STATUS.PRESENT);
             setConfirmModal({ isOpen: false, lectureIndex: -1 });
         } catch (error) {
             // 에러는 상위 컴포넌트에서 처리됨
@@ -268,44 +234,9 @@ const AttendanceCard = ({
                                 </p>
                             </div>
                         </div>
-
-                        {/* 출석률 배지 */}
-                        <div className="text-right">
-                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                                attendanceStats.attendanceRate >= 80 ? 'bg-green-100 text-green-700' :
-                                    attendanceStats.attendanceRate >= 60 ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-red-100 text-red-700'
-                            }`}>
-                                {attendanceStats.attendanceRate}% 출석
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                                {attendanceStats.attended}/{attendanceStats.totalLectures - attendanceStats.none}회
-                            </div>
-                        </div>
                     </div>
                 </div>
 
-                {/* 출석 통계 */}
-                <div className="px-6 py-4 border-b border-gray-100">
-                    <div className="grid grid-cols-4 gap-4 text-center">
-                        <div>
-                            <div className="text-xl font-bold text-green-600">{attendanceStats.attended}</div>
-                            <div className="text-xs text-gray-600">출석</div>
-                        </div>
-                        <div>
-                            <div className="text-xl font-bold text-red-600">{attendanceStats.absent}</div>
-                            <div className="text-xs text-gray-600">결석</div>
-                        </div>
-                        <div>
-                            <div className="text-xl font-bold text-orange-600">{attendanceStats.etc}</div>
-                            <div className="text-xs text-gray-600">기타</div>
-                        </div>
-                        <div>
-                            <div className="text-xl font-bold text-gray-500">{attendanceStats.none}</div>
-                            <div className="text-xs text-gray-600">미기록</div>
-                        </div>
-                    </div>
-                </div>
 
                 {/* 전체 출석 현황 (오름차순 정렬) */}
                 {allAttendance.length > 0 && (
@@ -313,10 +244,22 @@ const AttendanceCard = ({
                         <h4 className="text-sm font-medium text-gray-700 mb-3">전체 출석 현황</h4>
                         <div className="space-y-2 max-h-80 overflow-y-auto">
                             {allAttendance.map((item, index) => {
+                                // 새로운 getAttendanceStyle 함수 사용
                                 const style = getAttendanceStyle(item.attendance.status);
-                                const displayContent = item.attendance.status === 'Etc'
-                                    ? item.attendance.desc
-                                    : style.label;
+                                const config = ATTENDANCE_CONFIG[item.attendance.status];
+
+                                // 표시할 내용 결정 - 새로운 시스템에 맞게
+                                let displayContent;
+                                if (item.attendance.status === ATTENDANCE_STATUS.OTHER && item.attendance.desc) {
+                                    // 기타의 경우 desc 표시
+                                    displayContent = item.attendance.desc;
+                                } else if (config?.displayName) {
+                                    // 설정된 표시명 사용
+                                    displayContent = config.displayName;
+                                } else {
+                                    // 기본값
+                                    displayContent = style.label || '미기록';
+                                }
 
                                 return (
                                     <div key={index} className="flex items-center justify-between py-2">
@@ -333,7 +276,7 @@ const AttendanceCard = ({
                                         </div>
 
                                         <div className="flex items-center space-x-2">
-                                            {/* 출석 상태 표시 */}
+                                            {/* 출석 상태 표시 - 새로운 스타일 시스템 적용 */}
                                             <div className={`
                                                 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border
                                                 ${style.className}
@@ -344,7 +287,7 @@ const AttendanceCard = ({
                                                 </span>
                                             </div>
 
-                                            {/* 출석 버튼 (조건부 표시) */}
+                                            {/* 출석 버튼 (조건부 표시) - 출석만 체크 가능 */}
                                             {item.canMark && onAttendanceUpdate && (
                                                 <button
                                                     onClick={() => handleAttendanceClick(item.index)}
