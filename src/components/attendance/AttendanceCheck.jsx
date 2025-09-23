@@ -170,29 +170,72 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
         }
     };
 
-    // 출석 업데이트 핸들러 추가
+
     const handleAttendanceUpdate = useCallback(async (rowIndex, colIndex, newValue) => {
         try {
             setErrorMessage('');
             setSuccessMessage('');
 
+            // 1. 즉시 UI 업데이트를 위한 데이터 수정
+            if (selectedStudent && data?.dataRows) {
+                const updatedData = { ...data };
+                const updatedDataRows = [...updatedData.dataRows];
+                const targetRow = { ...updatedDataRows[selectedStudent.originalIndex] };
+                const updatedAttendance = [...(targetRow.attendance || [])];
+
+                // 새로운 출석 상태로 업데이트
+                updatedAttendance[colIndex] = {
+                    status: newValue === 'O' ? 'O' : newValue === 'X' ? 'X' : newValue ? 'Etc' : 'None',
+                    desc: newValue === 'O' || newValue === 'X' ? '' : newValue || ''
+                };
+
+                targetRow.attendance = updatedAttendance;
+                updatedDataRows[selectedStudent.originalIndex] = targetRow;
+                updatedData.dataRows = updatedDataRows;
+
+                // 즉시 UI 반영을 위해 selectedStudent도 업데이트
+                setSelectedStudent(prev => ({
+                    ...prev,
+                    attendance: updatedAttendance
+                }));
+            }
+
+            // 2. 실제 Google Sheets 업데이트
             await updateCell(rowIndex, colIndex, newValue);
 
-            // 성공 메시지 표시
-            const studentName = data?.dataRows?.[rowIndex]?.user?.name || '학생';
+            // 3. 성공 메시지 표시
+            const studentName = selectedStudent?.user?.name || '학생';
             setSuccessMessage(`${studentName}의 출석이 완료되었습니다.`);
 
-            // 3초 후 메시지 자동 삭제
+            // 4. 백그라운드에서 최신 데이터 가져오기 (UI 블로킹 없이)
+            setTimeout(() => {
+                refetch(); // showLoading: false로 백그라운드 업데이트
+            }, 500);
+
+            // 5초 후 메시지 자동 삭제
             setTimeout(() => setSuccessMessage(''), 3000);
 
         } catch (error) {
             console.error('출석 처리 실패:', error);
-            setErrorMessage(`출석 처리 실패: ${error.message}`);
 
-            // 5초 후 에러 메시지 자동 삭제
+            // 실패 시 원래 데이터로 복원
+            if (selectedStudent && data?.dataRows) {
+                const originalStudent = data.dataRows.find((row, index) =>
+                    index === selectedStudent.originalIndex
+                );
+                if (originalStudent) {
+                    setSelectedStudent(prev => ({
+                        ...prev,
+                        attendance: originalStudent.attendance
+                    }));
+                }
+            }
+
+            setErrorMessage(`출석 처리 실패: ${error.message}`);
             setTimeout(() => setErrorMessage(''), 5000);
         }
-    }, [updateCell, data]);
+    }, [updateCell, selectedStudent, data]);
+
 
     // 메시지 닫기 핸들러들
     const handleCloseSuccessMessage = () => setSuccessMessage('');
