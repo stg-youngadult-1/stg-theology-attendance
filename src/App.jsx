@@ -9,7 +9,7 @@ import HeaderComponent from "./components/layout/HeaderComponent.jsx";
  */
 function App() {
     // 현재 화면 상태 관리
-    const [currentView, setCurrentView] = useState('management'); // 'attendanceCheck' | 'management'
+    const [currentView, setCurrentView] = useState('attendanceCheck'); // 'attendanceCheck' | 'management'
 
     // Google Sheets 뷰어 옵션 설정
     const sheetsOptions = {
