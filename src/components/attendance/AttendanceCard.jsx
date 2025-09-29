@@ -6,11 +6,10 @@ import {
     ATTENDANCE_CONFIG,
     isAttendanceStatus
 } from '../../utils/attendanceStatus.js';
+import AttendanceConfirmModal from "../auth/AttendanceConfirmModal.jsx";
 
 /**
  * 날짜를 "9/10" 형식으로 포맷팅
- * @param {Date} date - Date 객체
- * @returns {string} 포맷된 날짜 문자열
  */
 const formatDate = (date) => {
     if (!date || !(date instanceof Date)) return '';
@@ -19,29 +18,21 @@ const formatDate = (date) => {
 
 /**
  * 현재 날짜와 강의 날짜가 동일한지 확인
- * @param {Date} lectureDate - 강의 날짜
- * @returns {boolean} 동일 여부
  */
 const isSameDate = (lectureDate) => {
     if (!lectureDate || !(lectureDate instanceof Date)) return false;
-
     const today = new Date();
     return today.toDateString() === lectureDate.toDateString();
 };
 
 /**
  * 출석 체크가 가능한지 확인
- * @param {Object} header - 강의 헤더 정보
- * @param {Object} attendanceItem - 출석 정보
- * @returns {boolean} 출석 체크 가능 여부
  */
 const canMarkAttendance = (header, attendanceItem) => {
-    // 현재 날짜와 강의 날짜가 동일한지 확인
     if (!isSameDate(header.date)) {
         return false;
     }
 
-    // 미기록 상태인지 확인 (새로운 출석 시스템 적용)
     const isUnrecorded = !attendanceItem ||
         attendanceItem.status === ATTENDANCE_STATUS.NONE ||
         !attendanceItem.status ||
@@ -52,9 +43,6 @@ const canMarkAttendance = (header, attendanceItem) => {
 
 /**
  * 오늘의 출석 상태를 확인
- * @param {Array} headers - 강의 헤더 정보
- * @param {Array} attendance - 출석 정보 배열
- * @returns {Object} 오늘의 출석 상태 정보
  */
 const getTodayAttendanceStatus = (headers, attendance) => {
     // 오늘 날짜에 해당하는 강의 찾기
@@ -85,51 +73,6 @@ const getTodayAttendanceStatus = (headers, attendance) => {
         header: todayHeader,
         attendance: todayAttendance
     };
-};
-
-/**
- * 출석 확인 팝업 컴포넌트
- */
-const AttendanceConfirmModal = ({ isOpen, studentName, onConfirm, onCancel, loading }) => {
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-                    출석 확인
-                </h3>
-                <p className="text-gray-600 mb-6 text-center">
-                    <span className="font-medium text-blue-600">{studentName}</span> 출석하시겠습니까?
-                </p>
-                <div className="flex space-x-3">
-                    <button
-                        onClick={onCancel}
-                        disabled={loading}
-                        className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200
-                                 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                        취소
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        disabled={loading}
-                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white
-                                 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
-                    >
-                        {loading ? (
-                            <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                처리 중...
-                            </>
-                        ) : (
-                            '출석 체크'
-                        )}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
 };
 
 /**
@@ -314,7 +257,7 @@ const AttendanceCard = ({
         });
     }, [attendance, headers]);
 
-    // 출석 확인 처리 - 출석(O)만 체크 가능
+    // 인증번호 검증 성공 후 출석 처리
     const handleAttendanceConfirm = async () => {
         if (!onAttendanceUpdate || confirmModal.lectureIndex < 0) return;
 
@@ -325,6 +268,7 @@ const AttendanceCard = ({
         } catch (error) {
             // 에러는 상위 컴포넌트에서 처리됨
             console.error('출석 처리 실패:', error);
+            throw error; // 모달에서 에러 처리하도록 전달
         }
     };
 
@@ -471,7 +415,7 @@ const AttendanceCard = ({
                 )}
             </div>
 
-            {/* 출석 확인 모달 */}
+            {/* 인증번호 입력 기능이 추가된 출석 확인 모달 */}
             <AttendanceConfirmModal
                 isOpen={confirmModal.isOpen}
                 studentName={student.name}
