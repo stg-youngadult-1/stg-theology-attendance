@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SheetsViewer from './components/data/SheetsViewer';
 import AttendanceCheck from './components/attendance/AttendanceCheck';
 import FooterComponent from "./components/layout/FooterComponent.jsx";
 import HeaderComponent from "./components/layout/HeaderComponent.jsx";
+import PasswordAuth from './components/auth/PasswordAuth.jsx';
 
 /**
  * 메인 애플리케이션 컴포넌트
@@ -10,6 +11,17 @@ import HeaderComponent from "./components/layout/HeaderComponent.jsx";
 function App() {
     // 현재 화면 상태 관리
     const [currentView, setCurrentView] = useState('attendanceCheck'); // 'attendanceCheck' | 'management'
+
+    // 인증 상태 관리
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    // 초기 마운트 시 sessionStorage에서 인증 상태 복원
+    useEffect(() => {
+        const authStatus = sessionStorage.getItem('isAuthenticated');
+        if (authStatus === 'true') {
+            setIsAuthenticated(true);
+        }
+    }, []);
 
     // Google Sheets 뷰어 옵션 설정
     const sheetsOptions = {
@@ -34,6 +46,12 @@ function App() {
         setCurrentView(view);
     };
 
+    // 인증 성공 핸들러
+    const handleAuthSuccess = () => {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('isAuthenticated', 'true');
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* 페이지 헤더 */}
@@ -45,11 +63,20 @@ function App() {
             {/* 메인 콘텐츠 */}
             <main>
                 {currentView === 'management' ? (
-                    <SheetsViewer
-                        options={sheetsOptions}
-                        className="animate-fade-in"
-                    />
+                    // 관리자 페이지: 인증 여부에 따라 분기
+                    isAuthenticated ? (
+                        <SheetsViewer
+                            options={sheetsOptions}
+                            className="animate-fade-in"
+                        />
+                    ) : (
+                        <PasswordAuth
+                            onSuccess={handleAuthSuccess}
+                            className="animate-fade-in"
+                        />
+                    )
                 ) : (
+                    // 출석체크 페이지
                     <AttendanceCheck
                         options={sheetsOptions}
                         className="animate-fade-in"
