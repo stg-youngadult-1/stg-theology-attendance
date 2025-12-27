@@ -16,7 +16,7 @@ const SHEETS_CONFIGS = {
     },
     attendance_26_win: {
         spreadsheetId: '1A-arj9sHYrI4HyTgYKpouG5PMBB88Q4ocM5wDh7Szeg',
-        sheetName: '출석부 웹페이지 DB',
+        sheetName: 'DB(김인수 외 임의수정금지)',
         range: 'A1:P500'
     }
     // 추가 스프레드시트 설정은 여기에 추가
