@@ -100,7 +100,7 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
 
         attendance.forEach(att => {
             if (!att || !att.status || att.status === ATTENDANCE_STATUS.NONE) {
-                totalNone++;
+                totalEtc++;
             } else if (att.status === ATTENDANCE_STATUS.ABSENT) {
                 totalAbsent++;
             } else if (isAttendanceStatus(att.status)) {

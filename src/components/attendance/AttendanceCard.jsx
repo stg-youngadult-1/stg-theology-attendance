@@ -17,19 +17,34 @@ const formatDate = (date) => {
 };
 
 /**
- * 현재 날짜와 강의 날짜가 동일한지 확인
+ * 현재 날짜가 강의 주(월~일) 내에 있는지 확인
  */
-const isSameDate = (lectureDate) => {
+const isInSameWeek = (lectureDate) => {
     if (!lectureDate || !(lectureDate instanceof Date)) return false;
+
     const today = new Date();
-    return today.toDateString() === lectureDate.toDateString();
+
+    // 강의 날짜의 주 시작일(월요일) 계산
+    const lectureStartOfWeek = new Date(lectureDate);
+    const lectureDay = lectureStartOfWeek.getDay();
+    const lectureMonday = lectureDay === 0 ? -6 : 1 - lectureDay; // 일요일이면 -6, 다른 요일이면 1-요일
+    lectureStartOfWeek.setDate(lectureStartOfWeek.getDate() + lectureMonday);
+    lectureStartOfWeek.setHours(0, 0, 0, 0);
+
+    // 강의 날짜의 주 끝일(일요일) 계산
+    const lectureEndOfWeek = new Date(lectureStartOfWeek);
+    lectureEndOfWeek.setDate(lectureStartOfWeek.getDate() + 6);
+    lectureEndOfWeek.setHours(23, 59, 59, 999);
+
+    // 현재 날짜가 강의 주 내에 있는지 확인
+    return today >= lectureStartOfWeek && today <= lectureEndOfWeek;
 };
 
 /**
  * 출석 체크가 가능한지 확인
  */
 const canMarkAttendance = (header, attendanceItem) => {
-    if (!isSameDate(header.date)) {
+    if (!isInSameWeek(header.date)) {
         return false;
     }
 
@@ -42,13 +57,13 @@ const canMarkAttendance = (header, attendanceItem) => {
 };
 
 /**
- * 오늘의 출석 상태를 확인
+ * 현재 주의 출석 상태를 확인
  */
 const getTodayAttendanceStatus = (headers, attendance) => {
-    // 오늘 날짜에 해당하는 강의 찾기
-    const todayLectureIndex = headers.findIndex(header => isSameDate(header.date));
+    // 현재 주에 해당하는 강의 찾기
+    const thisWeekLectureIndex = headers.findIndex(header => isInSameWeek(header.date));
 
-    if (todayLectureIndex === -1) {
+    if (thisWeekLectureIndex === -1) {
         return {
             hasTodayLecture: false,
             isCompleted: false,
@@ -57,21 +72,21 @@ const getTodayAttendanceStatus = (headers, attendance) => {
         };
     }
 
-    const todayHeader = headers[todayLectureIndex];
-    const todayAttendance = attendance[todayLectureIndex];
+    const thisWeekHeader = headers[thisWeekLectureIndex];
+    const thisWeekAttendance = attendance[thisWeekLectureIndex];
 
     // 출석이 완료되었는지 확인
-    const isCompleted = todayAttendance &&
-        todayAttendance.status &&
-        todayAttendance.status !== ATTENDANCE_STATUS.NONE &&
-        todayAttendance.status.trim() !== '';
+    const isCompleted = thisWeekAttendance &&
+        thisWeekAttendance.status &&
+        thisWeekAttendance.status !== ATTENDANCE_STATUS.NONE &&
+        thisWeekAttendance.status.trim() !== '';
 
     return {
         hasTodayLecture: true,
         isCompleted,
-        lectureIndex: todayLectureIndex,
-        header: todayHeader,
-        attendance: todayAttendance
+        lectureIndex: thisWeekLectureIndex,
+        header: thisWeekHeader,
+        attendance: thisWeekAttendance
     };
 };
 
@@ -89,14 +104,14 @@ const AttendanceCheckHeader = ({
     // 상태에 따른 버튼/메시지 렌더링
     const renderContent = () => {
         if (!hasTodayLecture) {
-            // 오늘 강의가 없는 경우
+            // 이번 주 강의가 없는 경우
             return (
                 <div className="flex items-center justify-center py-3 px-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <div className="flex items-center text-gray-600">
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="text-sm font-medium">지금은 출석 기간이 아닙니다</span>
+                        <span className="text-sm font-medium">이번 주는 출석 기간이 아닙니다</span>
                     </div>
                 </div>
             );
@@ -111,7 +126,7 @@ const AttendanceCheckHeader = ({
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="text-sm font-medium">오늘 출석 완료</span>
+                        <span className="text-sm font-medium">이번 주 출석 완료</span>
                         <div className={`ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs ${style.className}`}>
                             <span className="mr-1">{style.icon}</span>
                             <span>{style.label}</span>
@@ -130,7 +145,7 @@ const AttendanceCheckHeader = ({
                     </svg>
                     <div>
                         <div className="text-sm font-medium">{header.lecture}</div>
-                        <div className="text-xs text-blue-600">{formatDate(header.date)}</div>
+                        <div className="text-xs text-blue-600">{formatDate(header.date)} (이번 주 출석)</div>
                     </div>
                 </div>
                 <button
@@ -193,7 +208,7 @@ const AttendanceCard = ({
         lectureIndex: -1
     });
 
-    // 오늘의 출석 상태 확인
+    // 이번 주의 출석 상태 확인
     const todayStatus = useMemo(() => {
         return getTodayAttendanceStatus(headers, attendance);
     }, [headers, attendance]);
@@ -353,8 +368,8 @@ const AttendanceCard = ({
                                                 <div className="font-medium">{item.header.lecture}</div>
                                                 <div className="text-xs text-gray-500">
                                                     {formatDate(item.header.date)}
-                                                    {isSameDate(item.header.date) && (
-                                                        <span className="ml-2 text-blue-500 font-medium">오늘</span>
+                                                    {isInSameWeek(item.header.date) && (
+                                                        <span className="ml-2 text-blue-500 font-medium">이번 주</span>
                                                     )}
                                                 </div>
                                             </div>
