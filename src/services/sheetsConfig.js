@@ -30,7 +30,7 @@ const SHEETS_CONFIGS = {
 export const getSheetConfig = (sheetId) => {
     const config = SHEETS_CONFIGS[sheetId];
     if (!config) {
-        throw new Error(`Sheet configuration not found for sheetId: ${sheetId}`);
+        throw new Error(`❌ Sheet configuration not found for sheetId: ${sheetId}`);
     }
 
     return {

@@ -1,6 +1,6 @@
 // hooks/useGoogleSheets.js
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import {useState, useEffect, useCallback, useRef} from 'react';
 import {getSheetConfig} from "../services/sheetsConfig.js";
 import googleSheetsData from "../services/GoogleSheetsData.js";
 import googleSheetsAuth from "../services/GoogleSheetsAuth.js";
@@ -24,30 +24,21 @@ import {getColAddress, getRowAddress} from "../services/model.js";
 export const useGoogleSheets = (options = {}) => {
     const {
         sheetId,
-        spreadsheetId,
-        sheetName,
-        range,
         autoFetch = true,
         refetchInterval = 0,
         onSuccess,
         onError,
-        onCellUpdate,
-        onCellUpdateError
+        onCellUpdate, // 사용 안함
+        onCellUpdateError // 사용 안함
     } = options;
 
-    // 시트 설정 결정 (sheetId 우선, 없으면 직접 옵션 또는 기본값 사용)
-    const defaultConfig = getSheetConfig('attendance');
-    const sheetConfig = sheetId ? getSheetConfig(sheetId) : {
-        spreadsheetId: spreadsheetId || defaultConfig.spreadsheetId,
-        sheetName: sheetName || defaultConfig.sheetName,
-        range: range || defaultConfig.range
-    };
+    // sheetId 필수 검증
+    if (!sheetId) {
+        throw new Error('❌ useGoogleSheets: sheetId parameter is required. Please provide a valid sheetId from SHEETS_CONFIGS.');
+    }
 
-    const {
-        spreadsheetId: finalSpreadsheetId,
-        sheetName: finalSheetName,
-        range: finalRange
-    } = sheetConfig;
+    // 시트 설정 결정 (sheetId 사용)
+    const {spreadsheetId, sheetName, range} = getSheetConfig(sheetId);
 
     // 상태 관리
     const [data, setData] = useState(null);
@@ -173,9 +164,9 @@ export const useGoogleSheets = (options = {}) => {
 
         const {
             showLoading = true,
-            targetSpreadsheetId = finalSpreadsheetId,
-            targetSheetName = finalSheetName,
-            targetRange = finalRange
+            targetSpreadsheetId = spreadsheetId,
+            targetSheetName = sheetName,
+            targetRange = range
         } = options;
 
         try {
@@ -227,7 +218,7 @@ export const useGoogleSheets = (options = {}) => {
             }
             abortControllerRef.current = null;
         }
-    }, [finalSpreadsheetId, finalSheetName, finalRange, authenticate, handleError, handleSuccess]);
+    }, [spreadsheetId, sheetName, range, authenticate, handleError, handleSuccess]);
 
     /**
      * 셀 업데이트 (낙관적 업데이트 + CAS)
@@ -268,21 +259,20 @@ export const useGoogleSheets = (options = {}) => {
             console.log(`📝 셀 업데이트 시도: ${cellAddress} (${targetRow.user?.name})`);
 
             // 낙관적 업데이트: UI 먼저 업데이트
-            const previousData = { ...data };
-            const updatedData = { ...data };
-            const updatedRow = { ...updatedData.dataRows[rowIndex] };
+            const updatedData = {...data};
+            const updatedRow = {...updatedData.dataRows[rowIndex]};
             const updatedAttendance = [...(updatedRow.attendance || [])];
 
             // 새 값에 따른 출석 상태 파싱
             let newAttendanceItem;
             if (!newValue || newValue.trim() === '' || newValue.trim() === '-') {
-                newAttendanceItem = { status: 'None', desc: '' };
+                newAttendanceItem = {status: 'None', desc: ''};
             } else if (newValue.trim() === 'X') {
-                newAttendanceItem = { status: 'X', desc: '' };
+                newAttendanceItem = {status: 'X', desc: ''};
             } else if (newValue.trim() === 'O') {
-                newAttendanceItem = { status: 'O', desc: '' };
+                newAttendanceItem = {status: 'O', desc: ''};
             } else {
-                newAttendanceItem = { status: 'Etc', desc: newValue.trim() };
+                newAttendanceItem = {status: 'Etc', desc: newValue.trim()};
             }
 
             updatedAttendance[colIndex] = newAttendanceItem;
@@ -294,8 +284,8 @@ export const useGoogleSheets = (options = {}) => {
 
             // CAS를 사용한 실제 업데이트
             const updateResult = await googleSheetsData.updateCellWithCAS(
-                finalSpreadsheetId,
-                finalSheetName,
+                spreadsheetId,
+                sheetName,
                 cellAddress,
                 newValue,
                 currentValue
@@ -340,7 +330,7 @@ export const useGoogleSheets = (options = {}) => {
                 }
 
                 // 백그라운드에서 새로고침
-                await fetchData({ showLoading: false });
+                await fetchData({showLoading: false});
 
                 throw new Error(conflictError);
             } else {
@@ -363,7 +353,7 @@ export const useGoogleSheets = (options = {}) => {
         } finally {
             setCellUpdateLoading(false);
         }
-    }, [data, finalSpreadsheetId, finalSheetName, authenticate, getSheetCellAddress, onCellUpdate, onCellUpdateError, fetchData]);
+    }, [data, spreadsheetId, sheetName, authenticate, getSheetCellAddress, onCellUpdate, onCellUpdateError, fetchData]);
 
     /**
      * 특정 셀의 현재 값 조회
@@ -374,26 +364,26 @@ export const useGoogleSheets = (options = {}) => {
     const getCellValue = useCallback(async (rowIndex, colIndex) => {
         try {
             const cellAddress = getSheetCellAddress(rowIndex, colIndex);
-            const value = await googleSheetsData.getCurrentCellValue(finalSpreadsheetId, finalSheetName, cellAddress);
+            const value = await googleSheetsData.getCurrentCellValue(spreadsheetId, sheetName, cellAddress);
             return value;
         } catch (err) {
             console.error('셀 값 조회 실패:', err);
             throw err;
         }
-    }, [finalSpreadsheetId, finalSheetName, getSheetCellAddress]);
+    }, [spreadsheetId, sheetName, getSheetCellAddress]);
 
     /**
      * 데이터 새로고침 (로딩 상태 표시)
      */
     const refetch = useCallback(() => {
-        return fetchData({ showLoading: true });
+        return fetchData({showLoading: true});
     }, [fetchData]);
 
     /**
      * 백그라운드에서 데이터 새로고침 (로딩 상태 표시 안함)
      */
     const refreshData = useCallback(() => {
-        return fetchData({ showLoading: false });
+        return fetchData({showLoading: false});
     }, [fetchData]);
 
     /**
@@ -473,10 +463,10 @@ export const useGoogleSheets = (options = {}) => {
 
     // 파라미터 변경 시 데이터 다시 가져오기
     useEffect(() => {
-        if (autoFetch && (finalSpreadsheetId || finalSheetName || finalRange)) {
+        if (autoFetch && (spreadsheetId || sheetName || range)) {
             fetchData();
         }
-    }, [finalSpreadsheetId, finalSheetName, finalRange, autoFetch, fetchData]);
+    }, [spreadsheetId, sheetName, range, autoFetch, fetchData]);
 
     // 컴포넌트 언마운트 시 정리
     useEffect(() => {
@@ -528,9 +518,9 @@ export const useGoogleSheets = (options = {}) => {
         // 설정 정보
         config: {
             sheetId,
-            spreadsheetId: finalSpreadsheetId,
-            sheetName: finalSheetName,
-            range: finalRange,
+            spreadsheetId: spreadsheetId,
+            sheetName: sheetName,
+            range: range,
             autoFetch,
             refetchInterval
         }
