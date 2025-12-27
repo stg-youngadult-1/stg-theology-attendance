@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import {generateDailyCode} from "../../utils/randomGenerator.js";
 
 /**
  * 출석 확인 팝업 컴포넌트 - 인증번호 입력 추가
@@ -16,8 +17,8 @@ const AttendanceConfirmModal = ({ isOpen, studentName, onConfirm, onCancel, load
     const [showCode, setShowCode] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
 
-    // 환경변수에서 올바른 인증번호 가져오기
-    const correctCode = import.meta.env.VITE_ATTENDANCE_CODE || '1234';
+    // 환경변수에서 인증번호 가져오기, 없으면 오늘 날짜 기반 랜덤 코드 생성
+    const correctCode = import.meta.env.VITE_ATTENDANCE_CODE || generateDailyCode();
 
     // 모달이 닫힐 때 초기화
     useEffect(() => {

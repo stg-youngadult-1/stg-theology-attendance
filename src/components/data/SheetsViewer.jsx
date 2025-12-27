@@ -7,6 +7,7 @@ import ErrorMessage from '../common/ErrorMessage';
 import SheetsHeader from './SheetsHeader';
 import SheetsTable from './SheetsTable';
 import CellEditModal from '../common/CellEditModal';
+import DailyCodeBox from '../common/DailyCodeBox';
 
 /**
  * 스프레드시트 뷰어 메인 컨테이너 컴포넌트
@@ -150,6 +151,10 @@ const SheetsViewer = ({ options = {}, className = '' }) => {
     // 성공 상태 렌더링
     return (
         <div className={`container max-w-7xl mx-auto px-4 py-8 ${className}`}>
+
+            {/* 오늘의 출석 인증번호 */}
+            <DailyCodeBox className="mb-6" />
+
             {/* 헤더 */}
             <SheetsHeader
                 data={data}
