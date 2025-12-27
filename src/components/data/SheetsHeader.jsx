@@ -32,11 +32,8 @@ const SheetsHeader = ({data, onRefresh, loading, config}) => {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 mb-1 flex items-center space-x-2">
-                            25-2학기
+                            26년 겨울방학 영상반
                         </h1>
-                        <p className="text-sm text-gray-600">
-                            {config?.sheetName ? `${config.sheetName} 시트의 데이터를 표시합니다` : '스프레드시트 데이터를 불러와서 표시합니다'}
-                        </p>
                     </div>
                 </div>
             </div>
