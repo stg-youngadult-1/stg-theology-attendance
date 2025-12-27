@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import SheetsViewer from './components/data/SheetsViewer';
 import AttendanceCheck from './components/attendance/AttendanceCheck';
 import FooterComponent from "./components/layout/FooterComponent.jsx";
@@ -25,6 +25,8 @@ function App() {
 
     // Google Sheets 뷰어 옵션 설정
     const sheetsOptions = {
+        sheetId: 'attendance',
+
         // 자동으로 데이터 로드
         autoFetch: true,
 
