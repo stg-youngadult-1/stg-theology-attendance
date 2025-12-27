@@ -32,7 +32,7 @@ const SheetsHeader = ({data, onRefresh, loading, config}) => {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 mb-1 flex items-center space-x-2">
-                            26년 겨울방학 영상반
+                            26년 겨울학기 영상반
                         </h1>
                     </div>
                 </div>

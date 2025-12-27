@@ -130,7 +130,7 @@ const SheetsTable = ({
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium text-gray-900 flex items-center space-x-2">
                         <span>📋</span>
-                        <span>25 가을학기</span>
+                        <span>26 겨울학기 영상반</span>
                         {cellUpdateLoading && (
                             <span className="text-sm text-blue-600 animate-pulse">저장 중...</span>
                         )}
