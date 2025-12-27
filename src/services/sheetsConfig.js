@@ -1,22 +1,47 @@
 // services/sheetsConfig.js
 
-// Google Sheets 관련 설정
-export const SHEETS_CONFIG = {
-    // 스프레드시트 ID
-    spreadsheetId: '1-gUVumU_3rU82Y1tY9cX9PUe10zJsMlDmw6chxc03nY',
+const SHEETS_API = {
+    baseUrl: 'https://sheets.googleapis.com/v4/spreadsheets',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    scope: 'https://www.googleapis.com/auth/spreadsheets'
+}
 
-    // 시트명
-    sheetName: '출석부 웹페이지 DB',
-
-    // 데이터 범위
-    range: 'A1:P500',
-
-    // API 관련 설정
-    api: {
-        baseUrl: 'https://sheets.googleapis.com/v4/spreadsheets',
-        tokenUrl: 'https://oauth2.googleapis.com/token',
-        scope: 'https://www.googleapis.com/auth/spreadsheets'
+// 다중 스프레드시트 설정
+const SHEETS_CONFIGS = {
+    // 기본 출석부 (기존 설정)
+    attendance: {
+        spreadsheetId: '1-gUVumU_3rU82Y1tY9cX9PUe10zJsMlDmw6chxc03nY',
+        sheetName: '출석부 웹페이지 DB',
+        range: 'A1:P500'
+    },
+    attendance_26_win: {
+        spreadsheetId: '1A-arj9sHYrI4HyTgYKpouG5PMBB88Q4ocM5wDh7Szeg',
+        sheetName: 'DB(김인수 외 임의수정금지)',
+        range: 'A1:P500'
     }
+    // 추가 스프레드시트 설정은 여기에 추가
+    // example: {
+    //     spreadsheetId: 'another-spreadsheet-id',
+    //     sheetName: '다른 시트',
+    //     range: 'A1:Z200'
+    // }
+};
+
+/**
+ * 특정 sheetId에 해당하는 설정을 가져옵니다
+ * @param {string} sheetId - 시트 ID
+ * @returns {Object} 시트 설정 객체
+ */
+export const getSheetConfig = (sheetId) => {
+    const config = SHEETS_CONFIGS[sheetId];
+    if (!config) {
+        throw new Error(`❌ Sheet configuration not found for sheetId: ${sheetId}`);
+    }
+
+    return {
+        ...config,
+        api: SHEETS_API // API 설정은 공통으로 사용
+    };
 };
 
 // 서비스 계정 자격 증명

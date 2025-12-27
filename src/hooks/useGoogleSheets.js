@@ -1,7 +1,7 @@
 // hooks/useGoogleSheets.js
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import {SHEETS_CONFIG} from "../services/sheetsConfig.js";
+import {useState, useEffect, useCallback, useRef} from 'react';
+import {getSheetConfig} from "../services/sheetsConfig.js";
 import googleSheetsData from "../services/GoogleSheetsData.js";
 import googleSheetsAuth from "../services/GoogleSheetsAuth.js";
 import {getColAddress, getRowAddress} from "../services/model.js";
@@ -9,9 +9,10 @@ import {getColAddress, getRowAddress} from "../services/model.js";
 /**
  * Google Sheets 데이터를 관리하는 커스텀 훅
  * @param {Object} options - 옵션 객체
- * @param {string} options.spreadsheetId - 스프레드시트 ID
- * @param {string} options.sheetName - 시트명
- * @param {string} options.range - 데이터 범위
+ * @param {string} options.sheetId - 시트 설정 ID (SHEETS_CONFIGS의 키)
+ * @param {string} options.spreadsheetId - 스프레드시트 ID (sheetId가 없을 때 직접 지정)
+ * @param {string} options.sheetName - 시트명 (sheetId가 없을 때 직접 지정)
+ * @param {string} options.range - 데이터 범위 (sheetId가 없을 때 직접 지정)
  * @param {boolean} options.autoFetch - 자동으로 데이터를 가져올지 여부 (기본값: true)
  * @param {number} options.refetchInterval - 자동 새로고침 간격 (밀리초, 0이면 비활성화)
  * @param {Function} options.onSuccess - 성공 콜백
@@ -22,16 +23,22 @@ import {getColAddress, getRowAddress} from "../services/model.js";
  */
 export const useGoogleSheets = (options = {}) => {
     const {
-        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
-        sheetName = SHEETS_CONFIG.sheetName,
-        range = SHEETS_CONFIG.range,
+        sheetId,
         autoFetch = true,
         refetchInterval = 0,
         onSuccess,
         onError,
-        onCellUpdate,
-        onCellUpdateError
+        onCellUpdate, // 사용 안함
+        onCellUpdateError // 사용 안함
     } = options;
+
+    // sheetId 필수 검증
+    if (!sheetId) {
+        throw new Error('❌ useGoogleSheets: sheetId parameter is required. Please provide a valid sheetId from SHEETS_CONFIGS.');
+    }
+
+    // 시트 설정 결정 (sheetId 사용)
+    const {spreadsheetId, sheetName, range} = getSheetConfig(sheetId);
 
     // 상태 관리
     const [data, setData] = useState(null);
@@ -252,21 +259,20 @@ export const useGoogleSheets = (options = {}) => {
             console.log(`📝 셀 업데이트 시도: ${cellAddress} (${targetRow.user?.name})`);
 
             // 낙관적 업데이트: UI 먼저 업데이트
-            const previousData = { ...data };
-            const updatedData = { ...data };
-            const updatedRow = { ...updatedData.dataRows[rowIndex] };
+            const updatedData = {...data};
+            const updatedRow = {...updatedData.dataRows[rowIndex]};
             const updatedAttendance = [...(updatedRow.attendance || [])];
 
             // 새 값에 따른 출석 상태 파싱
             let newAttendanceItem;
             if (!newValue || newValue.trim() === '' || newValue.trim() === '-') {
-                newAttendanceItem = { status: 'None', desc: '' };
+                newAttendanceItem = {status: 'None', desc: ''};
             } else if (newValue.trim() === 'X') {
-                newAttendanceItem = { status: 'X', desc: '' };
+                newAttendanceItem = {status: 'X', desc: ''};
             } else if (newValue.trim() === 'O') {
-                newAttendanceItem = { status: 'O', desc: '' };
+                newAttendanceItem = {status: 'O', desc: ''};
             } else {
-                newAttendanceItem = { status: 'Etc', desc: newValue.trim() };
+                newAttendanceItem = {status: 'Etc', desc: newValue.trim()};
             }
 
             updatedAttendance[colIndex] = newAttendanceItem;
@@ -324,7 +330,7 @@ export const useGoogleSheets = (options = {}) => {
                 }
 
                 // 백그라운드에서 새로고침
-                await fetchData({ showLoading: false });
+                await fetchData({showLoading: false});
 
                 throw new Error(conflictError);
             } else {
@@ -370,14 +376,14 @@ export const useGoogleSheets = (options = {}) => {
      * 데이터 새로고침 (로딩 상태 표시)
      */
     const refetch = useCallback(() => {
-        return fetchData({ showLoading: true });
+        return fetchData({showLoading: true});
     }, [fetchData]);
 
     /**
      * 백그라운드에서 데이터 새로고침 (로딩 상태 표시 안함)
      */
     const refreshData = useCallback(() => {
-        return fetchData({ showLoading: false });
+        return fetchData({showLoading: false});
     }, [fetchData]);
 
     /**
@@ -511,114 +517,12 @@ export const useGoogleSheets = (options = {}) => {
 
         // 설정 정보
         config: {
-            spreadsheetId,
-            sheetName,
-            range,
+            sheetId,
+            spreadsheetId: spreadsheetId,
+            sheetName: sheetName,
+            range: range,
             autoFetch,
             refetchInterval
         }
     };
 };
-
-/**
- * 특정 셀 값만 가져오는 훅
- */
-export const useGoogleSheetsCell = (cellAddress, options = {}) => {
-    const [cellValue, setCellValue] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const {
-        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
-        sheetName = SHEETS_CONFIG.sheetName,
-        autoFetch = true
-    } = options;
-
-    const fetchCellValue = useCallback(async () => {
-        if (!cellAddress) return;
-
-        try {
-            setLoading(true);
-            setError(null);
-
-            // 인증 확인
-            if (!googleSheetsAuth.isAuthenticated()) {
-                await googleSheetsAuth.authenticate();
-            }
-
-            const value = await googleSheetsData.getCellValue(spreadsheetId, sheetName, cellAddress);
-            setCellValue(value);
-
-        } catch (err) {
-            setError(err.message);
-            console.error('셀 값 가져오기 실패:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, [cellAddress, spreadsheetId, sheetName]);
-
-    useEffect(() => {
-        if (autoFetch && cellAddress) {
-            fetchCellValue();
-        }
-    }, [autoFetch, cellAddress, fetchCellValue]);
-
-    return {
-        cellValue,
-        loading,
-        error,
-        refetch: fetchCellValue
-    };
-};
-
-/**
- * 여러 범위의 데이터를 한 번에 가져오는 훅
- */
-export const useGoogleSheetsBatch = (ranges, options = {}) => {
-    const [batchData, setBatchData] = useState({});
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const {
-        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
-        autoFetch = true
-    } = options;
-
-    const fetchBatchData = useCallback(async () => {
-        if (!ranges || ranges.length === 0) return;
-
-        try {
-            setLoading(true);
-            setError(null);
-
-            // 인증 확인
-            if (!googleSheetsAuth.isAuthenticated()) {
-                await googleSheetsAuth.authenticate();
-            }
-
-            const data = await googleSheetsData.getBatchData(spreadsheetId, ranges);
-            setBatchData(data);
-
-        } catch (err) {
-            setError(err.message);
-            console.error('배치 데이터 가져오기 실패:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, [ranges, spreadsheetId]);
-
-    useEffect(() => {
-        if (autoFetch && ranges && ranges.length > 0) {
-            fetchBatchData();
-        }
-    }, [autoFetch, ranges, fetchBatchData]);
-
-    return {
-        batchData,
-        loading,
-        error,
-        refetch: fetchBatchData
-    };
-};
-
-export default useGoogleSheets;
