@@ -525,7 +525,23 @@ const AttendanceCheck = ({options = {}, className = ''}) => {
                             <h3 className="text-lg font-medium text-gray-900 mb-3">
                                 {selectedStudent.user?.name}님의 출석 현황
                             </h3>
+
+                            {/* 100% 출석률 축하 메시지 */}
+                            {attendanceStats.attendanceRate === 100 && attendanceStats.totalAttended > 0 && (
+                                <div className="my-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
+                                    <div className="flex items-center justify-center space-x-2">
+                                        <span className="text-lg">🎉</span>
+                                        <span className="text-yellow-800 font-bold">수료를 축하합니다!</span>
+                                        <span className="text-lg">🎉</span>
+                                    </div>
+                                    <div className="text-center text-sm text-yellow-700 mt-1">
+                                        교리학교 1학기를 수료하였습니다!
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-4 md:grid-cols-4 gap-4">
+
                                 <div className="text-center">
                                     <div
                                         className="text-2xl font-bold text-green-600">{attendanceStats.attendanceRate}%

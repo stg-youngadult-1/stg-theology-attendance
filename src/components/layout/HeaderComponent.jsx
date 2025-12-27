@@ -49,7 +49,7 @@ function HeaderComponent({ currentView = 'management', onViewChange }) {
                                     className={getNavItemStyle('attendanceCheck')}
                                     type="button"
                                 >
-                                    📱 출석체크(1학기 영상반)
+                                    출석체크(1학기 영상반)
                                 </button>
 
                                 <button
@@ -57,7 +57,7 @@ function HeaderComponent({ currentView = 'management', onViewChange }) {
                                     className={getNavItemStyle('management')}
                                     type="button"
                                 >
-                                    🗂️ 출결관리(관리자용)
+                                    출결관리(관리자용)
                                 </button>
 
                                 <button
@@ -65,7 +65,7 @@ function HeaderComponent({ currentView = 'management', onViewChange }) {
                                     className={getNavItemStyle('attendanceCheck_25_Fall')}
                                     type="button"
                                 >
-                                    📱 이전학기 수료확인
+                                    이전학기 수료확인
                                 </button>
                             </div>
                         </div>
@@ -101,7 +101,7 @@ function HeaderComponent({ currentView = 'management', onViewChange }) {
                                 className={`${getNavItemStyle('attendanceCheck')} justify-start text-left`}
                                 type="button"
                             >
-                                📱 출석체크(1학기 영상반)
+                                출석체크(1학기 영상반)
                             </button>
 
                             <button
@@ -109,7 +109,7 @@ function HeaderComponent({ currentView = 'management', onViewChange }) {
                                 className={`${getNavItemStyle('management')} justify-start text-left`}
                                 type="button"
                             >
-                                🗂️ 출결관리(관리자용)
+                                출결관리(관리자용)
                             </button>
 
                             <button
@@ -117,7 +117,7 @@ function HeaderComponent({ currentView = 'management', onViewChange }) {
                                 className={`${getNavItemStyle('attendanceCheck_25_Fall')} justify-start text-left`}
                                 type="button"
                             >
-                                📱 이전학기 수료확인
+                                이전학기 수료확인
                             </button>
                         </div>
                     </div>
