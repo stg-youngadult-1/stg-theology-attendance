@@ -13,6 +13,11 @@ const SHEETS_CONFIGS = {
         spreadsheetId: '1-gUVumU_3rU82Y1tY9cX9PUe10zJsMlDmw6chxc03nY',
         sheetName: '출석부 웹페이지 DB',
         range: 'A1:P500'
+    },
+    attendance_26_win: {
+        spreadsheetId: '1A-arj9sHYrI4HyTgYKpouG5PMBB88Q4ocM5wDh7Szeg',
+        sheetName: '출석부 웹페이지 DB',
+        range: 'A1:P500'
     }
     // 추가 스프레드시트 설정은 여기에 추가
     // example: {
