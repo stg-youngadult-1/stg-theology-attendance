@@ -1,7 +1,7 @@
 // hooks/useGoogleSheets.js
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {SHEETS_CONFIG, getSheetConfig} from "../services/sheetsConfig.js";
+import {getSheetConfig} from "../services/sheetsConfig.js";
 import googleSheetsData from "../services/GoogleSheetsData.js";
 import googleSheetsAuth from "../services/GoogleSheetsAuth.js";
 import {getColAddress, getRowAddress} from "../services/model.js";
@@ -36,10 +36,11 @@ export const useGoogleSheets = (options = {}) => {
     } = options;
 
     // 시트 설정 결정 (sheetId 우선, 없으면 직접 옵션 또는 기본값 사용)
+    const defaultConfig = getSheetConfig('attendance');
     const sheetConfig = sheetId ? getSheetConfig(sheetId) : {
-        spreadsheetId: spreadsheetId || SHEETS_CONFIG.spreadsheetId,
-        sheetName: sheetName || SHEETS_CONFIG.sheetName,
-        range: range || SHEETS_CONFIG.range
+        spreadsheetId: spreadsheetId || defaultConfig.spreadsheetId,
+        sheetName: sheetName || defaultConfig.sheetName,
+        range: range || defaultConfig.range
     };
 
     const {

@@ -1,6 +1,6 @@
 // services/GoogleSheetsData.js
 
-import {SHEETS_CONFIG, DEFAULT_REQUEST_OPTIONS} from './sheetsConfig.js';
+import {getSheetConfig, DEFAULT_REQUEST_OPTIONS} from './sheetsConfig.js';
 import googleSheetsAuth from './GoogleSheetsAuth.js';
 import {getDataRows, getHeader, isEqualStatus} from "./model.js";
 
@@ -82,9 +82,9 @@ class GoogleSheetsData {
      * @returns {Promise<Array<Array<string>>>} 스프레드시트 데이터 배열
      */
     async getSheetData(
-        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
-        sheetName = SHEETS_CONFIG.sheetName,
-        range = SHEETS_CONFIG.range
+        spreadsheetId = getSheetConfig('attendance').spreadsheetId,
+        sheetName = getSheetConfig('attendance').sheetName,
+        range = getSheetConfig('attendance').range
     ) {
         try {
             console.log(`📊 데이터 조회 시작: ${sheetName}!${range}`);
@@ -97,7 +97,7 @@ class GoogleSheetsData {
                 dateTimeRenderOption: DEFAULT_REQUEST_OPTIONS.dateTimeRenderOption
             });
 
-            const url = `${SHEETS_CONFIG.api.baseUrl}/${spreadsheetId}/values/${encodedSheetName}!${encodedRange}?${queryParams}`;
+            const url = `${getSheetConfig('attendance').api.baseUrl}/${spreadsheetId}/values/${encodedSheetName}!${encodedRange}?${queryParams}`;
 
             const data = await this.makeApiRequest(url);
 
@@ -122,8 +122,8 @@ class GoogleSheetsData {
      * @returns {Promise<string>} 현재 셀 값
      */
     async getCurrentCellValue(
-        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
-        sheetName = SHEETS_CONFIG.sheetName,
+        spreadsheetId = getSheetConfig('attendance').spreadsheetId,
+        sheetName = getSheetConfig('attendance').sheetName,
         cellAddress
     ) {
         try {
@@ -137,7 +137,7 @@ class GoogleSheetsData {
                 dateTimeRenderOption: DEFAULT_REQUEST_OPTIONS.dateTimeRenderOption
             });
 
-            const url = `${SHEETS_CONFIG.api.baseUrl}/${spreadsheetId}/values/${encodedSheetName}!${encodedRange}?${queryParams}`;
+            const url = `${getSheetConfig('attendance').api.baseUrl}/${spreadsheetId}/values/${encodedSheetName}!${encodedRange}?${queryParams}`;
             const data = await this.makeApiRequest(url);
 
             const currentValue = data.values?.[0]?.[0] || '';
@@ -159,8 +159,8 @@ class GoogleSheetsData {
      * @returns {Promise<Object>} 업데이트 결과
      */
     async updateCell(
-        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
-        sheetName = SHEETS_CONFIG.sheetName,
+        spreadsheetId = getSheetConfig('attendance').spreadsheetId,
+        sheetName = getSheetConfig('attendance').sheetName,
         cellAddress,
         value
     ) {
@@ -170,7 +170,7 @@ class GoogleSheetsData {
             const encodedSheetName = encodeURIComponent(sheetName);
             const encodedRange = encodeURIComponent(cellAddress);
 
-            const url = `${SHEETS_CONFIG.api.baseUrl}/${spreadsheetId}/values/${encodedSheetName}!${encodedRange}`;
+            const url = `${getSheetConfig('attendance').api.baseUrl}/${spreadsheetId}/values/${encodedSheetName}!${encodedRange}`;
 
             const requestBody = {
                 range: `${sheetName}!${cellAddress}`,
@@ -215,8 +215,8 @@ class GoogleSheetsData {
      * @returns {Promise<Object>} 업데이트 결과
      */
     async updateCellWithCAS(
-        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
-        sheetName = SHEETS_CONFIG.sheetName,
+        spreadsheetId = getSheetConfig('attendance').spreadsheetId,
+        sheetName = getSheetConfig('attendance').sheetName,
         cellAddress,
         newValue,
         expectedValue
@@ -265,7 +265,7 @@ class GoogleSheetsData {
      * @param {Array<string>} ranges - 범위 배열 (예: ['Sheet1!A1:C10', 'Sheet2!A1:B5'])
      * @returns {Promise<Object>} 범위별 데이터 객체
      */
-    async getBatchData(spreadsheetId = SHEETS_CONFIG.spreadsheetId, ranges) {
+    async getBatchData(spreadsheetId = getSheetConfig('attendance').spreadsheetId, ranges) {
         try {
             console.log(`📊 배치 데이터 조회 시작: ${ranges.length}개 범위`);
 
@@ -278,7 +278,7 @@ class GoogleSheetsData {
             // 각 범위를 쿼리 파라미터로 추가
             encodedRanges.forEach(range => queryParams.append('ranges', range));
 
-            const url = `${SHEETS_CONFIG.api.baseUrl}/${spreadsheetId}/values:batchGet?${queryParams}`;
+            const url = `${getSheetConfig('attendance').api.baseUrl}/${spreadsheetId}/values:batchGet?${queryParams}`;
 
             const data = await this.makeApiRequest(url);
 
@@ -303,11 +303,11 @@ class GoogleSheetsData {
      * @param {string} spreadsheetId - 스프레드시트 ID
      * @returns {Promise<Object>} 스프레드시트 메타데이터
      */
-    async getSpreadsheetMetadata(spreadsheetId = SHEETS_CONFIG.spreadsheetId) {
+    async getSpreadsheetMetadata(spreadsheetId = getSheetConfig('attendance').spreadsheetId) {
         try {
             console.log(`📋 스프레드시트 메타데이터 조회: ${spreadsheetId}`);
 
-            const url = `${SHEETS_CONFIG.api.baseUrl}/${spreadsheetId}`;
+            const url = `${getSheetConfig('attendance').api.baseUrl}/${spreadsheetId}`;
             const data = await this.makeApiRequest(url);
 
             console.log(`✅ 메타데이터 조회 완료: ${data.properties?.title}`);
@@ -326,9 +326,9 @@ class GoogleSheetsData {
      * @returns {Promise<Object>} 구조화된 데이터 객체
      */
     async fetchSheetData(
-        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
-        sheetName = SHEETS_CONFIG.sheetName,
-        range = SHEETS_CONFIG.range
+        spreadsheetId = getSheetConfig('attendance').spreadsheetId,
+        sheetName = getSheetConfig('attendance').sheetName,
+        range = getSheetConfig('attendance').range
     ) {
         try {
             const values = await this.getSheetData(spreadsheetId, sheetName, range);
@@ -582,8 +582,8 @@ class GoogleSheetsData {
      * @returns {Promise<string>} 셀 값
      */
     async getCellValue(
-        spreadsheetId = SHEETS_CONFIG.spreadsheetId,
-        sheetName = SHEETS_CONFIG.sheetName,
+        spreadsheetId = getSheetConfig('attendance').spreadsheetId,
+        sheetName = getSheetConfig('attendance').sheetName,
         cellAddress
     ) {
         try {

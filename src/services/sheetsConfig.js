@@ -1,24 +1,5 @@
 // services/sheetsConfig.js
 
-// 기본 Google Sheets 설정 (하위 호환성 유지)
-export const SHEETS_CONFIG = {
-    // 스프레드시트 ID
-    spreadsheetId: '1-gUVumU_3rU82Y1tY9cX9PUe10zJsMlDmw6chxc03nY',
-
-    // 시트명
-    sheetName: '출석부 웹페이지 DB',
-
-    // 데이터 범위
-    range: 'A1:P500',
-
-    // API 관련 설정
-    api: {
-        baseUrl: 'https://sheets.googleapis.com/v4/spreadsheets',
-        tokenUrl: 'https://oauth2.googleapis.com/token',
-        scope: 'https://www.googleapis.com/auth/spreadsheets'
-    }
-};
-
 const SHEETS_API = {
     baseUrl: 'https://sheets.googleapis.com/v4/spreadsheets',
     tokenUrl: 'https://oauth2.googleapis.com/token',
@@ -26,7 +7,7 @@ const SHEETS_API = {
 }
 
 // 다중 스프레드시트 설정
-export const SHEETS_CONFIGS = {
+const SHEETS_CONFIGS = {
     // 기본 출석부 (기존 설정)
     attendance: {
         spreadsheetId: '1-gUVumU_3rU82Y1tY9cX9PUe10zJsMlDmw6chxc03nY',
@@ -47,10 +28,6 @@ export const SHEETS_CONFIGS = {
  * @returns {Object} 시트 설정 객체
  */
 export const getSheetConfig = (sheetId) => {
-    if (!sheetId) {
-        return SHEETS_CONFIG; // 기본 설정 반환 (하위 호환성)
-    }
-
     const config = SHEETS_CONFIGS[sheetId];
     if (!config) {
         throw new Error(`Sheet configuration not found for sheetId: ${sheetId}`);

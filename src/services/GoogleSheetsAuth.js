@@ -1,6 +1,6 @@
 // services/GoogleSheetsAuth.js
 
-import { SHEETS_CONFIG, SERVICE_ACCOUNT_CREDENTIALS } from './sheetsConfig.js';
+import { getSheetConfig, SERVICE_ACCOUNT_CREDENTIALS } from './sheetsConfig.js';
 
 /**
  * Google Sheets API 인증을 담당하는 클래스
@@ -26,8 +26,8 @@ class GoogleSheetsAuth {
         const now = Math.floor(Date.now() / 1000);
         const payload = {
             "iss": credentials.client_email,
-            "scope": SHEETS_CONFIG.api.scope,
-            "aud": SHEETS_CONFIG.api.tokenUrl,
+            "scope": getSheetConfig('attendance').api.scope,
+            "aud": getSheetConfig('attendance').api.tokenUrl,
             "exp": now + 3600,
             "iat": now
         };
@@ -103,7 +103,7 @@ class GoogleSheetsAuth {
         try {
             console.log('🔑 액세스 토큰 요청 중...');
 
-            const response = await fetch(SHEETS_CONFIG.api.tokenUrl, {
+            const response = await fetch(getSheetConfig('attendance').api.tokenUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
