@@ -10,7 +10,7 @@ import {formatKoreanDate, getLastWeekStats} from "../../utils/weeklyStatus.js";
  * @param {boolean} props.loading - 로딩 상태
  * @param {Object} props.config - 설정 정보
  */
-const SheetsHeader = ({data, onRefresh, loading, config}) => {
+const SheetsHeader = ({data, onRefresh, loading, config, title = ''}) => {
     const formatLastUpdated = (timestamp) => {
         if (!timestamp) return '알 수 없음';
         return new Date(timestamp).toLocaleString('ko-KR', {
@@ -32,7 +32,7 @@ const SheetsHeader = ({data, onRefresh, loading, config}) => {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 mb-1 flex items-center space-x-2">
-                            26년 겨울학기 영상반
+                            {title}
                         </h1>
                     </div>
                 </div>

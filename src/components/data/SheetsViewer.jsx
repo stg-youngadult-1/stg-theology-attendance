@@ -15,7 +15,7 @@ import DailyCodeBox from '../common/DailyCodeBox';
  * @param {Object} props.options - useGoogleSheets 훅 옵션
  * @param {string} props.className - 추가 CSS 클래스
  */
-const SheetsViewer = ({ options = {}, className = '' }) => {
+const SheetsViewer = ({ options = {}, className = '', title = ''}) => {
     // 모달 상태 관리
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCell, setSelectedCell] = useState(null);
@@ -161,6 +161,7 @@ const SheetsViewer = ({ options = {}, className = '' }) => {
                 onRefresh={refetch}
                 loading={loading}
                 config={config}
+                title={title}
             />
 
             {/* 데이터 테이블 */}

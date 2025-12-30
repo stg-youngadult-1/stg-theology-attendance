@@ -67,6 +67,15 @@ function HeaderComponent({ currentView = 'management', onViewChange }) {
                                 >
                                     이전학기 수료확인
                                 </button>
+
+
+                                <button
+                                    onClick={() => handleNavClick('management_25_Fall')}
+                                    className={getNavItemStyle('management_25_Fall')}
+                                    type="button"
+                                >
+                                    이전학기 출결관리(관리자용)
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -118,6 +127,14 @@ function HeaderComponent({ currentView = 'management', onViewChange }) {
                                 type="button"
                             >
                                 이전학기 수료확인
+                            </button>
+
+                            <button
+                                onClick={() => handleNavClick('management_25_Fall')}
+                                className={`${getNavItemStyle('management_25_Fall')} justify-start text-left`}
+                                type="button"
+                            >
+                                이전학기 출결관리(관리자용)
                             </button>
                         </div>
                     </div>

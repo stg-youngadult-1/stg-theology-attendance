@@ -90,6 +90,22 @@ function App() {
                         <SheetsViewer
                             options={sheetsOptions_26_Win}
                             className="animate-fade-in"
+                            title="26년 겨울학기 영상반"
+                        />
+                    ) : (
+                        <PasswordAuth
+                            onSuccess={handleAuthSuccess}
+                            className="animate-fade-in"
+                        />
+                    )
+                )}
+                {currentView === 'management_25_Fall' && (
+                    // 관리자 페이지: 인증 여부에 따라 분기
+                    isAuthenticated ? (
+                        <SheetsViewer
+                            options={sheetsOptions_25_Fall}
+                            className="animate-fade-in"
+                            title="25년 이전학기"
                         />
                     ) : (
                         <PasswordAuth
